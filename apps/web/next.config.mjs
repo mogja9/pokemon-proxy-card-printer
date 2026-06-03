@@ -5,6 +5,7 @@ const nextConfig = {
     '@proxyforge/config',
     '@proxyforge/db',
     '@proxyforge/print',
+    '@proxyforge/search',
   ],
   // native / node-only deps must not be bundled
   serverExternalPackages: ['sharp', 'pg'],

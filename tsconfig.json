@@ -5,6 +5,7 @@
     { "path": "packages/db" },
     { "path": "packages/ingest" },
     { "path": "packages/images" },
-    { "path": "packages/print" }
+    { "path": "packages/print" },
+    { "path": "packages/search" }
   ]
 }

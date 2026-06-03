@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { LAUNCH_LANGS, type Lang } from '@proxyforge/config';
-import { searchCards, listSets, listSupertypes } from '@/lib/db';
+import { listSets, listSupertypes } from '@/lib/db';
+import { searchCards } from '@/lib/search';
 import CardCard from '@/components/CardCard';
 
 export const dynamic = 'force-dynamic';
