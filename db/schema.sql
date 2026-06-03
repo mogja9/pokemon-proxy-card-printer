@@ -401,13 +401,15 @@ CREATE TABLE print_list (
   paper         text NOT NULL DEFAULT 'A4',   -- A4 required for full bleed
   dpi           int  NOT NULL DEFAULT 300,
   with_bleed    boolean NOT NULL DEFAULT false,  -- geometry warning fires on Letter+bleed
+  gutter_mm     numeric(4,1) NOT NULL DEFAULT 4, -- white space between cards (cutting room)
   duplex        boolean NOT NULL DEFAULT false,
   ink_saver     boolean NOT NULL DEFAULT false,
   created_at    timestamptz NOT NULL DEFAULT now(),
   updated_at    timestamptz NOT NULL DEFAULT now(),
   CHECK (user_id IS NOT NULL OR anon_token IS NOT NULL),
   CHECK (paper IN ('A4','letter')),
-  CHECK (dpi IN (300,600))
+  CHECK (dpi IN (300,600)),
+  CHECK (gutter_mm >= 0 AND gutter_mm <= 20)
 );
 CREATE INDEX idx_print_list_user ON print_list(user_id);
 CREATE INDEX idx_print_list_anon ON print_list(anon_token) WHERE anon_token IS NOT NULL;

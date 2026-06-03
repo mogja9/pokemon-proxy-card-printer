@@ -12,7 +12,7 @@ import { fileURLToPath } from 'node:url';
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const FORBIDDEN = [/mpc-autofill/i, /chilli-axe/i];
 const SCAN_EXT = new Set(['.ts', '.tsx', '.js', '.mjs', '.cjs', '.json']);
-const SKIP_DIR = new Set(['node_modules', 'dist', '.git']);
+const SKIP_DIR = new Set(['node_modules', 'dist', '.git', '.next', 'data']);
 
 const hits = [];
 

@@ -20,6 +20,17 @@ jobs:
       - run: npm run brand-lint
       - run: npm run gpl-check
 
+  web-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run web:build
+
   migrate-smoke:
     # Phase 0 gate: build the custom Postgres+pg_bigm image and apply schema.sql
     # verbatim on a clean DB. Fails on ANY DDL error (this is what would have

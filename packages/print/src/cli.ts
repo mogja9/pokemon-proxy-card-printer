@@ -63,11 +63,13 @@ async function main(): Promise<void> {
       `[print] wrote ${out}: ${res.totalCards} cards, bracket ${res.bracket}, ${res.canvasPx.w}x${res.canvasPx.h}px each`,
     );
   } else {
+    const gutterArg = flagVal(argv, 'gutter');
     const res = await renderHomePdf(items, {
       paper,
       dpi,
       withBleed: hasFlag(argv, 'bleed'),
       inkSaver: hasFlag(argv, 'ink-saver'),
+      ...(gutterArg !== undefined ? { gutterMm: Number(gutterArg) } : {}),
     });
     for (const w of res.warnings) console.warn(`[print] WARN: ${w}`);
     await writeFile(out, res.pdf);

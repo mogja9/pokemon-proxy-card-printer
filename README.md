@@ -4,11 +4,13 @@ A **free, open-source, self-hostable** website for finding any trading-card-game
 card in every major language and printing **playtest proxies** at the fixed
 competitive card size (63x88 mm). Non-commercial; donations only.
 
-> Status: **Phase 0 + 1 + 4** done - foundations, the TCGdex data spine, and the
-> dual-mode **print engine** (home PDF + MakePlayingCards ZIP). Still to come: the
-> image pipeline (Phase 2: hi-res per-language sourcing, scrapers, storage) and the
-> search/browse web UI (Phase 3). See `docs/ARCHITECTURE.md` for the full design
-> and `docs/OPEN_ITEMS.md` for decisions still open.
+> Status: **Phase 0-4 done** - foundations, the TCGdex data spine (Phase 1), the
+> image pipeline (Phase 2: best per-language sourcing + fetch-into-storage with
+> honest measured DPI), the search/browse/print web UI (Phase 3), and the
+> dual-mode print engine (Phase 4: home PDF + MakePlayingCards ZIP). Still open:
+> production S3/SeaweedFS + imgproxy serve plane, the JA native-350 scraper, and
+> Meilisearch (Phase 3 currently queries Postgres directly). See
+> `docs/ARCHITECTURE.md` for the full design and `docs/OPEN_ITEMS.md` for decisions.
 
 > Legal: this is a fan tool for personal, non-commercial playtesting. Proxies are
 > **not** tournament-legal and may not be sold or passed off as genuine. Card
@@ -59,6 +61,33 @@ npm run ingest -- incremental
 npm run test:net
 ```
 
+### Image pipeline (Phase 2)
+
+Fetches the best per-language source into storage with real measured DPI. EN
+upgrades to ~296 via the pokemontcg.io image CDN; other languages use TCGdex
+(~242); honest DPI is recorded per image. Default storage is local FS
+(`data/images`, $0); set `STORAGE_BACKEND=s3` + `IMAGES_DIR` for production.
+
+```bash
+npm run images -- fetch --langs en,fr,de,it,es,pt,ja,ko,zh-cn,zh-tw
+npm run images -- fetch --langs en --limit 50      # dev slice
+npm run images -- fetch --no-en-hires              # TCGdex-only
+```
+
+### Web UI (Phase 3)
+
+```bash
+export IMAGES_DIR="$PWD/data/images"   # share the image store with the renderer
+npm run web:dev                        # http://localhost:3000
+# or: npm run web:build && npm -w @proxyforge/web run start
+```
+
+Faceted browse (set / language / type / promo + name search), card detail with a
+language switcher and DPI / English-fallback badges, a localStorage print list,
+and a one-click render to home PDF or MakePlayingCards ZIP (with paper, DPI,
+gutter, and bleed options). Phase 3 queries Postgres directly; Meilisearch is the
+later drop-in.
+
 ### Printing (Phase 4)
 
 ```bash
@@ -86,8 +115,12 @@ packages/config         typed env + the compliance posture (single source of tru
 packages/db             pg pool + migration runner (applies schema.sql)
 packages/ingest         the Phase-1 spine: SourceAdapter, TCGdex adapter, normalization,
                         set-matcher, idempotent upserts, backfill + incremental, CLI
-packages/print          the Phase-4 print engine: exact geometry, sharp image-prep +
-                        bleed synthesis, home PDF (pdf-lib), MPC ZIP, DB resolver, CLI
+packages/images         the Phase-2 image pipeline: per-language source resolver,
+                        fetch-into-storage (local FS / S3), honest DPI metadata, CLI
+packages/print          the Phase-4 print engine: exact geometry (with gutter), sharp
+                        image-prep + bleed synthesis, home PDF (pdf-lib), MPC ZIP, CLI
+apps/web                the Phase-3 Next.js UI: faceted browse, card detail + language
+                        switcher, localStorage print list, render API, image route
 scripts/                brand-lint + gpl-import-check (CI gates)
 .github/workflows/ci.yml  typecheck/test/lint + Postgres+pg_bigm migration smoke-test
 ```

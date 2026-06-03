@@ -9,7 +9,8 @@
     "node": ">=22"
   },
   "workspaces": [
-    "packages/*"
+    "packages/*",
+    "apps/*"
   ],
   "scripts": {
     "typecheck": "tsc -b",
@@ -17,7 +18,10 @@
     "test:net": "PPF_RUN_NET_TESTS=1 node --import tsx --test \"packages/**/test/*.test.ts\"",
     "migrate": "node --import tsx packages/db/src/migrate.ts",
     "ingest": "node --import tsx packages/ingest/src/cli.ts",
+    "images": "node --import tsx packages/images/src/cli.ts",
     "print": "node --import tsx packages/print/src/cli.ts",
+    "web:dev": "npm -w @proxyforge/web run dev",
+    "web:build": "npm -w @proxyforge/web run build",
     "brand-lint": "node scripts/brand-lint.mjs",
     "gpl-check": "node scripts/gpl-import-check.mjs",
     "check": "npm run typecheck && npm run test && npm run brand-lint && npm run gpl-check"

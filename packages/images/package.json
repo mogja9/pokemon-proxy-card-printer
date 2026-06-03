@@ -1,0 +1,15 @@
+{
+  "name": "@proxyforge/images",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@proxyforge/config": "*",
+    "@proxyforge/db": "*",
+    "sharp": "^0.33.5"
+  }
+}

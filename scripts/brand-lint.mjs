@@ -25,13 +25,15 @@ function check(slot, value) {
 
 async function listPackageJsons() {
   const out = [resolve(ROOT, 'package.json')];
-  const pkgsDir = resolve(ROOT, 'packages');
-  try {
-    for (const d of await readdir(pkgsDir, { withFileTypes: true })) {
-      if (d.isDirectory()) out.push(resolve(pkgsDir, d.name, 'package.json'));
+  for (const dir of ['packages', 'apps']) {
+    const base = resolve(ROOT, dir);
+    try {
+      for (const d of await readdir(base, { withFileTypes: true })) {
+        if (d.isDirectory()) out.push(resolve(base, d.name, 'package.json'));
+      }
+    } catch {
+      /* dir absent */
     }
-  } catch {
-    /* no packages dir */
   }
   return out;
 }

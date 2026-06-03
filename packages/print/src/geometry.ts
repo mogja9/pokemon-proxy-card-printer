@@ -13,6 +13,10 @@ export const HOME_BLEED_MM = 3.175;
 export const SAFE_ZONE_MM = 3.175;
 export const CORNER_RADIUS_MM = 3;
 export const CROP_TICK_MM = 3;
+/** Default white space between cards on the sheet (cutting room). */
+export const DEFAULT_GUTTER_MM = 4;
+/** Printer's typical unprintable margin (1/4 in) - content must stay inside it. */
+export const PRINTER_MARGIN_MM = 6.35;
 
 export const PAGE_MM: Record<Paper, { w: number; h: number }> = {
   A4: { w: 210, h: 297 },
@@ -70,20 +74,40 @@ export interface PageLayout {
   blockH: number;
   x0: number;
   y0: number;
+  gutter: number;
 }
 
-/** 3x3 trim block centered on the page (mm, top-left origin). */
-export function pageLayoutMm(paper: Paper): PageLayout {
+/** 3x3 trim block (with inter-card gutters) centered on the page (mm, top-origin). */
+export function pageLayoutMm(paper: Paper, gutterMm: number = DEFAULT_GUTTER_MM): PageLayout {
   const page = PAGE_MM[paper];
-  const blockW = GRID.cols * CARD_SIZE_MM.width; // 189
-  const blockH = GRID.rows * CARD_SIZE_MM.height; // 264
-  return { page, blockW, blockH, x0: (page.w - blockW) / 2, y0: (page.h - blockH) / 2 };
+  const g = Math.max(0, gutterMm);
+  const blockW = GRID.cols * CARD_SIZE_MM.width + (GRID.cols - 1) * g; // 189 + 2g
+  const blockH = GRID.rows * CARD_SIZE_MM.height + (GRID.rows - 1) * g; // 264 + 2g
+  return { page, blockW, blockH, x0: (page.w - blockW) / 2, y0: (page.h - blockH) / 2, gutter: g };
 }
 
-/** Top-left (mm, top-origin) of a cell's TRIM box. */
-export function cellTopLeftMm(paper: Paper, row: number, col: number): { x: number; y: number } {
-  const { x0, y0 } = pageLayoutMm(paper);
-  return { x: x0 + col * CARD_SIZE_MM.width, y: y0 + row * CARD_SIZE_MM.height };
+/** Top-left (mm, top-origin) of a cell's TRIM box, accounting for the gutter. */
+export function cellTopLeftMm(
+  paper: Paper,
+  row: number,
+  col: number,
+  gutterMm: number = DEFAULT_GUTTER_MM,
+): { x: number; y: number } {
+  const { x0, y0, gutter } = pageLayoutMm(paper, gutterMm);
+  return {
+    x: x0 + col * (CARD_SIZE_MM.width + gutter),
+    y: y0 + row * (CARD_SIZE_MM.height + gutter),
+  };
+}
+
+/**
+ * Does the TRIM block (the actual cards) stay inside the printer's unprintable
+ * margin? Bleed extending past that is fine (it is cut away); only clipping the
+ * real card area matters. A wider gutter pushes the outer cards toward the edge.
+ */
+export function contentFitsPaper(paper: Paper, gutterMm: number): boolean {
+  const { y0, x0 } = pageLayoutMm(paper, gutterMm);
+  return Math.min(x0, y0) >= PRINTER_MARGIN_MM;
 }
 
 export function mmToPt(mm: number): number {

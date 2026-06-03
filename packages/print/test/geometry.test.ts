@@ -9,6 +9,7 @@ import {
   pageLayoutMm,
   mmToPt,
   bleedFitsPaper,
+  contentFitsPaper,
 } from '../src/geometry.js';
 
 test('trimPx: 744x1039 @300, 1488x2079 @600 (formula-consistent)', () => {
@@ -48,13 +49,13 @@ test('cellTopLeftMm + mmToPt: matches the sec.8.8 worked example (A4, center cel
   assert.ok(Math.abs(mmToPt(yMm) - 296.22) < 0.02, `y_pt=${mmToPt(yMm)}`);
 });
 
-test('pageLayoutMm: centered 3x3 block origins', () => {
-  const a4 = pageLayoutMm('A4');
+test('pageLayoutMm: centered 3x3 block origins (no gutter)', () => {
+  const a4 = pageLayoutMm('A4', 0);
   assert.equal(a4.blockW, 189);
   assert.equal(a4.blockH, 264);
   assert.equal(a4.x0, 10.5);
   assert.equal(a4.y0, 16.5);
-  const lt = pageLayoutMm('letter');
+  const lt = pageLayoutMm('letter', 0);
   assert.ok(Math.abs(lt.x0 - 13.45) < 1e-9);
   assert.ok(Math.abs(lt.y0 - 7.7) < 1e-9);
 });
@@ -62,4 +63,31 @@ test('pageLayoutMm: centered 3x3 block origins', () => {
 test('bleedFitsPaper: A4 yes, Letter no (sec.8.3)', () => {
   assert.equal(bleedFitsPaper('A4'), true);
   assert.equal(bleedFitsPaper('letter'), false);
+});
+
+test('gutter: block grows by (n-1)*gutter and stays centered; cells are spaced', () => {
+  // no gutter -> tight 189x264 block
+  assert.equal(pageLayoutMm('A4', 0).blockW, 189);
+  assert.equal(pageLayoutMm('A4', 0).blockH, 264);
+  // 4mm gutter -> 189+8 x 264+8, recentered
+  const g = pageLayoutMm('A4', 4);
+  assert.equal(g.blockW, 197);
+  assert.equal(g.blockH, 272);
+  assert.equal(g.x0, (210 - 197) / 2); // 6.5
+  assert.equal(g.y0, (297 - 272) / 2); // 12.5
+  // adjacent cells are exactly cardSize + gutter apart
+  const c00 = cellTopLeftMm('A4', 0, 0, 4);
+  const c01 = cellTopLeftMm('A4', 0, 1, 4);
+  const c10 = cellTopLeftMm('A4', 1, 0, 4);
+  assert.equal(c01.x - c00.x, 63 + 4);
+  assert.equal(c10.y - c00.y, 88 + 4);
+  // default gutter is 4mm
+  assert.equal(cellTopLeftMm('A4', 0, 1).x - cellTopLeftMm('A4', 0, 0).x, 67);
+});
+
+test('contentFitsPaper: trim block must stay in printable area', () => {
+  assert.equal(contentFitsPaper('A4', 4), true); // A4 fits even with 4mm gutter
+  assert.equal(contentFitsPaper('A4', 0), true);
+  assert.equal(contentFitsPaper('letter', 0), true); // tight 264 block fits Letter
+  assert.equal(contentFitsPaper('letter', 4), false); // gutter pushes outer rows into the margin
 });

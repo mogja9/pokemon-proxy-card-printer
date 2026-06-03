@@ -11,8 +11,10 @@ import {
   PER_PAGE,
   HOME_BLEED_MM,
   CROP_TICK_MM,
+  DEFAULT_GUTTER_MM,
+  PRINTER_MARGIN_MM,
   cellTopLeftMm,
-  pageLayoutMm,
+  contentFitsPaper,
   mmToPt,
   type Paper,
   type Dpi,
@@ -32,6 +34,8 @@ export interface HomePdfOptions {
   inkSaver?: boolean;
   cropMarks?: boolean;
   bleedStyle?: BleedStyle;
+  /** white space between cards on the sheet, mm (default 4). */
+  gutterMm?: number;
 }
 
 export interface HomePdfResult {
@@ -66,6 +70,12 @@ export async function renderHomePdf(
     for (let i = 0; i < it.quantity; i++) slots.push(prepared.png);
   }
 
+  const gutter = opts.gutterMm ?? DEFAULT_GUTTER_MM;
+  if (!contentFitsPaper(paper, gutter)) {
+    warnings.push(
+      `A ${gutter}mm gutter pushes the outer cards within the printer's ${PRINTER_MARGIN_MM}mm unprintable margin on ${paper}; reduce the gutter or use A4 to avoid clipping the cards.`,
+    );
+  }
   const doc = await PDFDocument.create();
   const page = PAGE_MM[paper];
   const bleedMm = opts.withBleed ? HOME_BLEED_MM : 0;
@@ -80,7 +90,7 @@ export async function renderHomePdf(
       if (idx >= slots.length) break;
       const row = Math.floor(i / GRID.cols);
       const col = i % GRID.cols;
-      const cell = cellTopLeftMm(paper, row, col); // top-origin
+      const cell = cellTopLeftMm(paper, row, col, gutter); // top-origin trim corner
       const xMm = cell.x - bleedMm;
       const yTopMm = cell.y - bleedMm;
       const yMm = page.h - (yTopMm + drawHmm); // flip to bottom-origin
@@ -92,38 +102,58 @@ export async function renderHomePdf(
         height: mmToPt(drawHmm),
       });
     }
-    if (opts.cropMarks !== false) drawCropMarks(pg, paper);
+    if (opts.cropMarks !== false) drawCornerCropMarks(pg, paper, gutter, slots.length, p);
   }
 
   return { pdf: await doc.save(), warnings, pages: pageCount, cards: slots.length };
 }
 
-/** Vector crop ticks where every trim line meets the page margin. */
-function drawCropMarks(pg: PDFPage, paper: Paper): void {
-  const { x0, y0, blockW, blockH, page } = pageLayoutMm(paper);
-  const tick = CROP_TICK_MM;
+/**
+ * Per-card corner crop marks. With a gutter between cards, marks live in the gap
+ * around each card's trim box (L-shaped ticks pointing outward from each corner),
+ * so you can cut each card with the surrounding white margin.
+ */
+function drawCornerCropMarks(
+  pg: PDFPage,
+  paper: Paper,
+  gutter: number,
+  totalSlots: number,
+  pageIndex: number,
+): void {
+  const pageH = PAGE_MM[paper].h;
+  const w = CARD_SIZE_MM.width;
+  const h = CARD_SIZE_MM.height;
+  const tick = Math.min(CROP_TICK_MM, gutter > 0 ? gutter : CROP_TICK_MM);
   const ink = rgb(0, 0, 0);
   const thickness = 0.3;
-  const top = (mm: number) => page.h - mm; // top-origin mm -> pdf y (mm)
-
+  const top = (mm: number) => pageH - mm; // top-origin mm -> pdf y (mm)
   const line = (x1: number, y1: number, x2: number, y2: number) =>
     pg.drawLine({
-      start: { x: mmToPt(x1), y: mmToPt(y1) },
-      end: { x: mmToPt(x2), y: mmToPt(y2) },
+      start: { x: mmToPt(x1), y: mmToPt(top(y1)) },
+      end: { x: mmToPt(x2), y: mmToPt(top(y2)) },
       thickness,
       color: ink,
     });
 
-  // vertical trim lines (4) -> ticks above and below the block
-  for (let c = 0; c <= GRID.cols; c++) {
-    const x = x0 + c * CARD_SIZE_MM.width;
-    line(x, top(y0 - tick), x, top(y0)); // top margin
-    line(x, top(y0 + blockH), x, top(y0 + blockH + tick)); // bottom margin
-  }
-  // horizontal trim lines (4) -> ticks in left and right margins
-  for (let r = 0; r <= GRID.rows; r++) {
-    const y = y0 + r * CARD_SIZE_MM.height;
-    line(x0 - tick, top(y), x0, top(y)); // left margin
-    line(x0 + blockW, top(y), x0 + blockW + tick, top(y)); // right margin
+  for (let i = 0; i < PER_PAGE; i++) {
+    if (pageIndex * PER_PAGE + i >= totalSlots) break;
+    const row = Math.floor(i / GRID.cols);
+    const col = i % GRID.cols;
+    const { x, y } = cellTopLeftMm(paper, row, col, gutter); // trim top-left
+    const x2 = x + w;
+    const y2 = y + h;
+    // each corner: one horizontal + one vertical tick pointing OUTWARD
+    // top-left
+    line(x - tick, y, x, y);
+    line(x, y - tick, x, y);
+    // top-right
+    line(x2, y, x2 + tick, y);
+    line(x2, y - tick, x2, y);
+    // bottom-left
+    line(x - tick, y2, x, y2);
+    line(x, y2, x, y2 + tick);
+    // bottom-right
+    line(x2, y2, x2 + tick, y2);
+    line(x2, y2, x2, y2 + tick);
   }
 }
