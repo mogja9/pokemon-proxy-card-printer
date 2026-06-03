@@ -1,0 +1,30 @@
+{
+  "name": "proxyforge",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Free, self-hostable site to find any TCG card in every language and print playtest proxies at the fixed 63x88mm size. Placeholder codename: ProxyForge.",
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22"
+  },
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "typecheck": "tsc -b",
+    "test": "node --import tsx --test \"packages/**/test/*.test.ts\"",
+    "test:net": "PPF_RUN_NET_TESTS=1 node --import tsx --test \"packages/**/test/*.test.ts\"",
+    "migrate": "node --import tsx packages/db/src/migrate.ts",
+    "ingest": "node --import tsx packages/ingest/src/cli.ts",
+    "print": "node --import tsx packages/print/src/cli.ts",
+    "brand-lint": "node scripts/brand-lint.mjs",
+    "gpl-check": "node scripts/gpl-import-check.mjs",
+    "check": "npm run typecheck && npm run test && npm run brand-lint && npm run gpl-check"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}

@@ -1,0 +1,29 @@
+# ProxyForge reverse proxy. Local dev = :80. For prod, replace ":80" with your
+# domain and Caddy auto-provisions Let's Encrypt TLS (free).
+#
+# Low-profile posture (legal): X-Robots-Tag noindex site-wide (see compliance).
+
+:80 {
+	encode zstd gzip
+
+	# Images: /img/* -> imgproxy (Phase 2 wires signed URLs)
+	handle_path /img/* {
+		reverse_proxy imgproxy:8080
+	}
+
+	# API: /api/* -> Fastify (Phase 3/4; service not up yet)
+	handle /api/* {
+		reverse_proxy api:3001
+	}
+
+	# Everything else -> Next.js web (Phase 3; service not up yet)
+	handle {
+		reverse_proxy web:3000
+	}
+
+	header {
+		# low profile by default (risk reduction, not a legal defense)
+		X-Robots-Tag "noindex, nofollow"
+		-Server
+	}
+}

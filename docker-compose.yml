@@ -1,0 +1,110 @@
+# ProxyForge - data-plane infrastructure (Phase 0/1).
+# All images are FOSS and self-hostable. App services (web/api/worker/upscaler)
+# are added in Phases 3-6; their stubs are commented at the bottom.
+#
+#   docker compose up -d postgres        # enough for migrate + ingest (Phase 1)
+#   docker compose up -d                 # full data plane
+#
+# Secrets: this file reads from .env (gitignored). Copy .env.example -> .env.
+
+name: proxyforge
+
+services:
+  postgres:
+    build:
+      context: ./db
+      dockerfile: Dockerfile
+    image: proxyforge/postgres-bigm:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-proxyforge}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me_locally}
+      POSTGRES_DB: ${POSTGRES_DB:-proxyforge}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-proxyforge} -d ${POSTGRES_DB:-proxyforge}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  valkey:
+    image: valkey/valkey:8-alpine
+    restart: unless-stopped
+    command: ["valkey-server", "--save", "60", "1", "--appendonly", "no"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - valkeydata:/data
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  meilisearch:
+    image: getmeili/meilisearch:v1.10
+    restart: unless-stopped
+    environment:
+      MEILI_MASTER_KEY: ${MEILI_MASTER_KEY:-change_me_locally}
+      MEILI_ENV: development
+    ports:
+      - "7700:7700"
+    volumes:
+      - meilidata:/meili_data
+
+  seaweedfs:
+    image: chrislusf/seaweedfs:latest
+    restart: unless-stopped
+    # single-binary: master + volume + filer + S3 gateway on :8333
+    command: "server -s3 -dir=/data -s3.config=/etc/seaweedfs/s3.json"
+    ports:
+      - "8333:8333"   # S3 API
+      - "8888:8888"   # filer
+    volumes:
+      - seaweeddata:/data
+      - ./infra/seaweedfs/s3.json:/etc/seaweedfs/s3.json:ro
+
+  imgproxy:
+    image: ghcr.io/imgproxy/imgproxy:latest
+    restart: unless-stopped
+    environment:
+      IMGPROXY_USE_S3: "true"
+      IMGPROXY_S3_ENDPOINT: "http://seaweedfs:8333"
+      AWS_ACCESS_KEY_ID: ${S3_ACCESS_KEY:-proxyforge}
+      AWS_SECRET_ACCESS_KEY: ${S3_SECRET_KEY:-change_me_locally}
+      IMGPROXY_ALLOWED_SOURCES: "s3://,https://assets.tcgdex.net/"
+    ports:
+      - "8080:8080"
+    depends_on:
+      - seaweedfs
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddydata:/data
+      - caddyconfig:/config
+    depends_on:
+      - imgproxy
+      - meilisearch
+
+  # ---- App services (Phases 3-6) - uncomment as they are built ----
+  # web:        # Next.js (apps/web)         Phase 3
+  # api:        # Fastify  (apps/api)         Phase 3/4
+  # worker:     # BullMQ render/scrape worker Phase 2/4
+  # upscaler:   # Real-ESRGAN (CPU) worker    Phase 6  (profile: upscale)
+
+volumes:
+  pgdata:
+  valkeydata:
+  meilidata:
+  seaweeddata:
+  caddydata:
+  caddyconfig:

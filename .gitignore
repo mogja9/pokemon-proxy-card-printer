@@ -1,0 +1,21 @@
+# deps
+node_modules/
+.pnp.*
+
+# build
+dist/
+*.tsbuildinfo
+
+# env / secrets (NEVER commit real keys; see .env.example)
+.env
+.env.*
+!.env.example
+secrets/
+
+# data / artifacts
+data/
+artifacts/
+*.log
+
+# os
+.DS_Store

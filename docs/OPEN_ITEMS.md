@@ -1,0 +1,20 @@
+# Open Items / Decisions To Make
+
+- Attorney sign-off (HARD launch gate): ephemeral-cache-as-temporary-hosting risk (may force storage_mode='generate'), KR-watermarked-art hosting, donation copy, nominative-use wording.
+- malie.io is now load-bearing for the $0 EN-hires path since pokemontcg.io merged into paid Scrydex; its availability/terms are UNVERIFIED and must be confirmed in Phase 7. Fallback if it vanishes: TCGdex high.png (~242) until a ScrydexAdapter or new EN-hires source lands.
+- pokemontcg.io->Scrydex: deprecated/default-OFF mitigates today; a future free overlay or paid Scrydex decision remains open.
+- KR / zh-cn image scarcity: heavy permanent reliance on EN fallback; decide whether to enable the watermarked KR source (legal review) or accept EN-only art.
+- JA scraper fragility: pokemon-card.com HTML restructure or UA/IP blocks would drop the only native >300 DPI source to ~242; circuit breaker + filename cache + EN fallback reduce but do not eliminate.
+- card_display MV scale: ~230k rows (23k cards x 10 langs); REFRESH CONCURRENTLY cost grows with the catalog -> may need per-language partial MVs or on-demand caching; decide its role vs Meilisearch.
+- MPC bracket ladder maintenance: shipped ladder overshoots some orders (240 -> 396) and MPC periodically adds tiers (252/288/360). Smallest-bracket-ge-quantity rule is correct; ladder VALUES are a config-overridable maintenance dependency to re-verify against the live MPC product pre-launch. Not schema-enforceable.
+- Letter + bleed: A4-default + 8-up Letter+bleed fallback resolve printer-margin clipping (real inked footprint with bleed is 189x270.35mm, outer bleed lands ~1.8mm inside the 6.35mm unprintable margin), but per-printer margins vary; consider per-printer calibration onboarding.
+- Promo natural-key mismatches now route to the schema-backed card_print_review queue, but an admin UI and an owner for that queue remain a process dependency.
+- Per-language/per-set COVERAGE dashboard (cards-with-image vs without, unmapped-rarity count, needs_review count) to make 'every card + tiered gap-fill' verifiable; deferred to post-launch ops, not on the launch critical path.
+- DECLINED hard FK card_print.rarity->rarity_norm and an enum CHECK on regulation_mark: a strict FK/enum would FAIL ingest on not-yet-mapped rarities or future regulation marks, conflicting with the 'ingest every card ever printed' mandate. Compromise shipped: nullable rarity_norm_id FK + permissive regulation_mark format CHECK (~ '^[A-Z]$') + coverage report to drive curation.
+- DECLINED row-level UNIQUE on image_variant.checksum_sha256: dedup is done at the OBJECT layer (content-addressed in SeaweedFS), not row-level, to preserve multi-source provenance rows; the 'stored once' wording is softened to object dedup.
+- KEPT face='both' (declined outright removal): documented semantics = 1 front + 1 back per quantity; duplex is normally the print_list.duplex job option, 'both' remains for the rare per-line override.
+- Hotlink high-res in MPC export: JA/KR ~350 hotlink rows are now searchable but cannot be composited into bleed for MPC while in hotlink mode; operators wanting native ~350 in MPC must set those sources to ephemeral/cache (documented in image pipeline). DPI-vs-target mismatch surfaced as an honest render-time warning, never a silent upscale.
+- Search relevance across languages: federated multi-search mixes per-index score scales; group multi-lang results by language in the UI.
+- localStorage cart limits (~5MB cap, loss on clearing site data for anon users): cap list size with a warning and encourage login.
+- Donation honesty: keep donations strictly non-functional and trademark-free (Pokellector precedent).
+- No live Postgres/Docker daemon was available in this environment to execute the DDL; the public_slug subquery blocker is removed and the schema reviewed manually against PG16 rules. Phase-0 CI must run the migration smoke-test against a clean postgres:16-alpine to confirm verbatim execution (pg_bigm must be installed in the image).

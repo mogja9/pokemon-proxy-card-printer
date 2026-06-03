@@ -1,0 +1,10 @@
+{
+  "name": "@proxyforge/config",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "exports": {
+    ".": "./src/index.ts"
+  }
+}

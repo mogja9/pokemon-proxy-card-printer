@@ -1,0 +1,17 @@
+{
+  "name": "@proxyforge/print",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@proxyforge/config": "*",
+    "@proxyforge/db": "*",
+    "fflate": "^0.8.2",
+    "pdf-lib": "^1.17.1",
+    "sharp": "^0.33.5"
+  }
+}

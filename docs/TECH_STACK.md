@@ -1,0 +1,28 @@
+# Tech Stack (all free / open-source / self-hostable)
+
+- PostgreSQL 16 (postgres:16-alpine) + contrib pgcrypto/pg_trgm/citext/pg_bigm
+- Meilisearch v1.10+ (charabia CJK tokenizers; one index per language; federated multi-search)
+- Postgres FTS (tsvector GIN, Latin) + pg_bigm GIN (CJK bigram) one-process search fallback behind SearchProvider
+- Next.js 15 App Router + next-intl (10 locales) + Zustand + TanStack Query + @tanstack/react-virtual + next/image
+- Fastify (Node 22 TypeScript) API/BFF
+- SeaweedFS (Apache-2.0, S3-compatible single-binary object storage, system of record; replaces MinIO whose free admin console was removed in 2025 and is AGPL)
+- Cloudflare R2 behind Cloudflare CDN (optional zero-egress hot-image cache; free = 10GB + 1M Class A + 10M Class B ops/mo)
+- imgproxy (libvips on-the-fly resize/format/DPI/WebP; print_id->storage_key/remote_url lookup in serve plane)
+- sharp (libvips) or Pillow (asymmetric MPC bleed synthesis, N-up, MPC PNGs, corner masks)
+- pdf-lib or reportlab (vector home-print PDF; references Alan-Cha/silhouette-card-maker MIT)
+- Noto Sans + Noto Sans CJK SC/TC/JP/KR (OFL-1.1, embeddable PDF/ZIP footer fonts for all 10 langs)
+- Real-ESRGAN-ncnn-vulkan (optional CPU-only arm64 upscaler, BSD-3; integer x4 then Lanczos resize to trim)
+- Valkey 8 (BSD; compose service named 'valkey') + BullMQ (renders/scrape) and/or pg-boss (queue on Postgres)
+- got + cheerio (resilient fetch + JA/zh-tw/52poke filename-discovery scraping)
+- tcgdex/cards-database (MIT, self-hosted Docker bulk dump = data spine)
+- pokemontcg.io v2 (DEPRECATED: merged into paid Scrydex; default OVERLAY_ADAPTER=none; may-vanish, not a hard dependency)
+- malie.io EN-hires PNG mirror (byte-identical to ptcgio _hires; de-facto $0 EN-hires default; availability/terms to verify pre-launch)
+- Caddy 2 (reverse proxy + auto Let's Encrypt TLS)
+- golang-migrate or node-pg-migrate (raw SQL; the sqlSchema file IS the migration; Drizzle = types/query-builder only)
+- Docker + docker-compose (single-host orchestration)
+- pg_dump -Fc + restic -> 2nd disk (primary $0) + Backblaze B2 off-site (free 10GB + ~1GB/day egress)
+- GitHub Actions + GHCR (fully $0 on public repo; if private, move scheduled jobs to host cron + native arm64 build)
+- CI migration smoke-test (applies sqlSchema verbatim to clean postgres:16-alpine)
+- Uptime Kuma + Dozzle + GlitchTip (optional self-hosted observability)
+- Oracle Cloud Always-Free ARM Ampere A1 VM (truly-$0 host) or home server + Cloudflare Tunnel
+- Ko-fi + GitHub Sponsors + Liberapay (donations, static links only, no payment code)

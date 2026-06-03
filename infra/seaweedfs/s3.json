@@ -1,0 +1,14 @@
+{
+  "identities": [
+    {
+      "name": "proxyforge",
+      "credentials": [
+        {
+          "accessKey": "proxyforge",
+          "secretKey": "change_me_locally"
+        }
+      ],
+      "actions": ["Read", "Write", "List", "Tagging", "Admin"]
+    }
+  ]
+}

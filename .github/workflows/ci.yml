@@ -1,0 +1,58 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  lint-type-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run brand-lint
+      - run: npm run gpl-check
+
+  migrate-smoke:
+    # Phase 0 gate: build the custom Postgres+pg_bigm image and apply schema.sql
+    # verbatim on a clean DB. Fails on ANY DDL error (this is what would have
+    # caught the generated-column blocker).
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Postgres + pg_bigm image
+        run: docker build -t pf-pg ./db
+      - name: Boot DB and auto-apply schema.sql (initdb)
+        run: |
+          docker run -d --name pf-pg \
+            -e POSTGRES_USER=proxyforge \
+            -e POSTGRES_PASSWORD=ci_password \
+            -e POSTGRES_DB=proxyforge \
+            -v "$PWD/db/schema.sql:/docker-entrypoint-initdb.d/10-schema.sql:ro" \
+            pf-pg
+      - name: Wait for DB to be ready (schema must apply cleanly)
+        run: |
+          for i in $(seq 1 60); do
+            if docker exec pf-pg pg_isready -U proxyforge -d proxyforge >/dev/null 2>&1; then
+              echo "ready after ${i}s"; break
+            fi
+            sleep 1
+          done
+          docker exec pf-pg pg_isready -U proxyforge -d proxyforge
+      - name: Verify core tables + the normalize fix landed
+        run: |
+          docker exec pf-pg psql -U proxyforge -d proxyforge -v ON_ERROR_STOP=1 -c \
+            "SELECT count(*) AS tables FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relkind='r';"
+          # the 100->10 collision regression: these MUST differ
+          docker exec pf-pg psql -U proxyforge -d proxyforge -v ON_ERROR_STOP=1 -c \
+            "SELECT CASE WHEN normalize_collector_number('10') <> normalize_collector_number('100') THEN 'OK' ELSE (SELECT 1/0)::text END AS collision_check;"
+      - name: Dump init log on failure
+        if: failure()
+        run: docker logs pf-pg || true
