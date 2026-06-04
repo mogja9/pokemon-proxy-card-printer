@@ -2,7 +2,7 @@
   "name": "proxyforge",
   "version": "0.0.1",
   "private": true,
-  "description": "Free, self-hostable site to find any TCG card in every language and print playtest proxies at the fixed 63x88mm size. Placeholder codename: ProxyForge.",
+  "description": "Free, self-hostable site to find any TCG card in every language and print playtest proxies at the fixed 63x88mm size. Public name: Proxy Printer.",
   "type": "module",
   "license": "MIT",
   "engines": {

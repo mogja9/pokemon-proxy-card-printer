@@ -1,26 +1,32 @@
-# ProxyForge (placeholder codename)
+# Proxy Printer
 
 A **free, open-source, self-hostable** website for finding any trading-card-game
 card in every major language and printing **playtest proxies** at the fixed
 competitive card size (63x88 mm). Non-commercial; donations only.
 
-> Status: **Phase 0-4 done** - foundations, the TCGdex data spine (Phase 1), the
-> image pipeline (Phase 2: best per-language sourcing + fetch-into-storage with
-> honest measured DPI), the search/browse/print web UI (Phase 3), and the
-> dual-mode print engine (Phase 4: home PDF + MakePlayingCards ZIP). Still open:
-> production S3/SeaweedFS + imgproxy serve plane, the JA native-350 scraper, and
-> Meilisearch (Phase 3 currently queries Postgres directly). See
-> `docs/ARCHITECTURE.md` for the full design and `docs/OPEN_ITEMS.md` for decisions.
+> The npm packages are scoped `@proxyforge/*` internally (the old working
+> codename); the public project name is **Proxy Printer**.
+
+> Status: **Phases 0-4 done, plus the Meilisearch search backend.** Foundations
+> and the TCGdex data spine (Phase 1), the image pipeline (Phase 2: best
+> per-language sourcing + fetch-into-storage with honest measured DPI), the
+> browse/detail/print web UI (Phase 3), the dual-mode print engine (Phase 4:
+> home PDF + MakePlayingCards ZIP), and a Meilisearch index (typo-tolerant,
+> multilingual) with an automatic Postgres-FTS fallback. See
+> `docs/ARCHITECTURE.md` for the full design and the
+> [Roadmap](#roadmap--what-still-needs-doing) below for what is left.
 
 > Legal: this is a fan tool for personal, non-commercial playtesting. Proxies are
 > **not** tournament-legal and may not be sold or passed off as genuine. Card
-> art/text are copyright their respective owners. See `docs/ARCHITECTURE.md` sec.10.
-> An attorney review is a hard gate before any public launch.
+> art and text are copyright their respective owners; this project is not
+> affiliated with, endorsed by, or sponsored by any rights holder. See
+> `docs/ARCHITECTURE.md` sec.10. An attorney review is a hard gate before any
+> public launch.
 
 ## Size vs DPI (the important distinction)
 
 - **SIZE is fixed: always 63x88 mm** (the universal competitive size). Hardcoded.
-- **DPI is separate** - it's image sharpness, the only quality dial. `744x1039 px`
+- **DPI is separate** - it is image sharpness, the only quality dial. `744x1039 px`
   @300 DPI, `1488x2079 px` @600 DPI for the same physical rectangle.
 
 ## Stack (all FOSS, $0 to run)
@@ -31,7 +37,7 @@ behind Caddy. One `docker compose` on an Oracle Always-Free ARM box or a home
 server. pokemontcg.io is a deprecated, default-OFF overlay (merged into paid
 Scrydex), kept behind a swappable adapter.
 
-## Quickstart (Phase 0 + 1)
+## Quickstart
 
 Prereqs: **Node >=22** and **Docker**. (Only Node is needed for unit tests.)
 
@@ -44,21 +50,19 @@ npm run typecheck
 npm test                      # pure-logic unit tests
 npm run brand-lint && npm run gpl-check
 
-# bring up Postgres (builds the pg_bigm image the first time) and apply the schema
-docker compose up -d postgres
+# bring up Postgres + Meilisearch (builds the pg_bigm image the first time)
+docker compose up -d postgres meilisearch
 npm run migrate               # applies db/schema.sql
 
 # ingest the TCGdex spine. Start with a tiny dev slice:
 npm run ingest -- backfill --langs en,ja,fr --limit-sets 2
-# ...then the full multilingual backfill (rich per-card data):
+# ...then the full multilingual backfill:
 #   point TCGDEX_BASE_URL at a self-hosted tcgdex clone first, then:
-npm run ingest -- backfill --full --refresh-mv
+npm run ingest -- backfill --refresh-mv        # add --full for rich per-card data
 
-# nightly delta (only new/changed sets):
-npm run ingest -- incremental
-
-# live adapter smoke test (hits the public TCGdex API):
-npm run test:net
+# build the search index, then start the UI:
+npm run search -- reindex
+npm run web:dev               # http://localhost:3000
 ```
 
 ### Image pipeline (Phase 2)
@@ -74,6 +78,23 @@ npm run images -- fetch --langs en --limit 50      # dev slice
 npm run images -- fetch --no-en-hires              # TCGdex-only
 ```
 
+### Search (Meilisearch + Postgres fallback)
+
+The `card_display` materialized view is the read-model; `npm run search -- reindex`
+refreshes it and pushes every row into a Meilisearch index. With
+`SEARCH_BACKEND=meili` (the default) the web app gets typo-tolerant, multilingual
+ranking; if Meili is unreachable or the index is not built yet it transparently
+falls back to the Postgres FTS + `pg_bigm` query, so the site never hard-fails.
+
+```bash
+npm run search -- reindex                       # refresh MV + (re)index all docs
+npm run search -- reindex --langs en,ja         # subset of languages
+npm run search -- status                        # index health + document count
+npm run search -- search "charizard" --lang en  # debug a query from the CLI
+```
+
+Re-run `reindex` after each ingest so the index tracks the catalog.
+
 ### Web UI (Phase 3)
 
 ```bash
@@ -85,8 +106,8 @@ npm run web:dev                        # http://localhost:3000
 Faceted browse (set / language / type / promo + name search), card detail with a
 language switcher and DPI / English-fallback badges, a localStorage print list,
 and a one-click render to home PDF or MakePlayingCards ZIP (with paper, DPI,
-gutter, and bleed options). Phase 3 queries Postgres directly; Meilisearch is the
-later drop-in.
+gutter, and bleed options). Search is served by Meilisearch with the Postgres
+fallback described above.
 
 ### Printing (Phase 4)
 
@@ -117,6 +138,8 @@ packages/ingest         the Phase-1 spine: SourceAdapter, TCGdex adapter, normal
                         set-matcher, idempotent upserts, backfill + incremental, CLI
 packages/images         the Phase-2 image pipeline: per-language source resolver,
                         fetch-into-storage (local FS / S3), honest DPI metadata, CLI
+packages/search         the Meilisearch read-path + indexer: fetch-based Meili client,
+                        card_display -> document mapping, keyset reindex, query builder, CLI
 packages/print          the Phase-4 print engine: exact geometry (with gutter), sharp
                         image-prep + bleed synthesis, home PDF (pdf-lib), MPC ZIP, CLI
 apps/web                the Phase-3 Next.js UI: faceted browse, card detail + language
@@ -133,3 +156,36 @@ per language (natural key = `card_set_id` + normalized collector number).
 Japanese, Korean, and Chinese use **different set structures**, so each becomes
 its **own `card_print` row** (a genuinely distinct printing). English-image
 fallback is derived in the read model when a localized scan is missing.
+
+## Roadmap / what still needs doing
+
+Done: Phase 0 (monorepo, config, db, CI), Phase 1 (TCGdex ingest), Phase 2 (image
+pipeline, local-FS storage), Phase 3 (web UI), Phase 4 (print engine), and the
+Meilisearch search backend with Postgres fallback.
+
+Still open (roughly in priority order):
+
+- [ ] **Image coverage.** Only cards with an image source are browseable; today
+      that is ~72% of prints (the read-model excludes imageless cards). Close the
+      gap with the two image sources below.
+- [ ] **JA native ~350 DPI scraper** (pokemon-card.com) - the only native >300
+      DPI Japanese source. Fragile (per-card detail-page scraping); needs a
+      circuit breaker + filename cache + EN fallback.
+- [ ] **malie.io EN hi-res path** - load-bearing for the $0 English hi-res route
+      since pokemontcg.io merged into paid Scrydex; availability and terms still
+      unverified.
+- [ ] **Production serve plane** - SeaweedFS object storage + imgproxy
+      derivatives (today images are local-FS only).
+- [ ] **Search refinement** - the index is currently a single Meili index with a
+      `lang` filter; per-language indexes with CJK tokenizers (the architecture's
+      design) would improve ja/ko/zh recall.
+- [ ] **Optional Real-ESRGAN upscaling** (Phase 6) for low-DPI sources.
+- [ ] **KR / Simplified-Chinese** image scarcity + watermarked-source legal review.
+- [ ] **Coverage dashboard + admin UI** for the `card_print_review` queue
+      (per-set / per-language cards-with-image vs without).
+- [ ] **Attorney sign-off (HARD launch gate)** - ephemeral-cache-as-hosting risk,
+      image redistribution terms, KR watermarked art, donation copy.
+- [ ] **Public name + domain** - the project is now "Proxy Printer"; the npm
+      scope (`@proxyforge/*`) and a domain are still to be finalized.
+
+See `docs/OPEN_ITEMS.md` for the full decision log behind these.
