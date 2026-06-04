@@ -44,6 +44,8 @@ export interface IndexSettings {
   filterableAttributes?: string[];
   sortableAttributes?: string[];
   rankingRules?: string[];
+  /** Meili caps reported/ reachable hits at maxTotalHits (default 1000). */
+  pagination?: { maxTotalHits?: number };
 }
 
 export class MeiliError extends Error {

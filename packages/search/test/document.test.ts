@@ -88,4 +88,6 @@ test('INDEX_SETTINGS: name is the top searchable; lang/setId filterable; release
   assert.ok(INDEX_SETTINGS.filterableAttributes?.includes('setId'));
   assert.ok(INDEX_SETTINGS.filterableAttributes?.includes('supertype'));
   assert.ok(INDEX_SETTINGS.sortableAttributes?.includes('releaseTs'));
+  // must lift Meili's default 1000-hit cap so the full catalog is reachable
+  assert.ok((INDEX_SETTINGS.pagination?.maxTotalHits ?? 0) > 1000);
 });

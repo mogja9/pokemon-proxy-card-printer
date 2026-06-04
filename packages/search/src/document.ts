@@ -69,6 +69,10 @@ export const INDEX_SETTINGS: IndexSettings = {
     'regulationMark',
   ],
   sortableAttributes: ['releaseTs', 'setId', 'collectorNumberNum'],
+  // The catalog is ~34k prints x 10 langs; Meili's default maxTotalHits (1000)
+  // would silently truncate the browse total and cap deep pagination. Raise it
+  // so the reported count is honest and every filtered card is reachable.
+  pagination: { maxTotalHits: 100000 },
 };
 
 function asStr(v: unknown): string | null {
