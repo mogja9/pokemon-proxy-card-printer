@@ -10,11 +10,11 @@ import {
   GRID,
   PER_PAGE,
   HOME_BLEED_MM,
-  CROP_TICK_MM,
   DEFAULT_GUTTER_MM,
   PRINTER_MARGIN_MM,
   cellTopLeftMm,
   contentFitsPaper,
+  cropTickMm,
   mmToPt,
   type Paper,
   type Dpi,
@@ -123,7 +123,7 @@ function drawCornerCropMarks(
   const pageH = PAGE_MM[paper].h;
   const w = CARD_SIZE_MM.width;
   const h = CARD_SIZE_MM.height;
-  const tick = Math.min(CROP_TICK_MM, gutter > 0 ? gutter : CROP_TICK_MM);
+  const tick = cropTickMm(gutter);
   const ink = rgb(0, 0, 0);
   const thickness = 0.3;
   const top = (mm: number) => pageH - mm; // top-origin mm -> pdf y (mm)
