@@ -11,6 +11,7 @@ export interface CardRow {
   id: string;
   slug: string;
   setId: string;
+  setCode: string | null; // PTCGL set code (card_set.ptcg_code), e.g. SVI; null if unmapped
   collector: string;
   supertype: string | null;
   rarity: string | null;
@@ -43,6 +44,7 @@ function mapRow(r: Record<string, unknown>, lang: Lang): CardRow {
     id: r.id as string,
     slug: r.slug as string,
     setId: r.set_id as string,
+    setCode: (r.ptcg_code as string | null) ?? null,
     collector: r.collector_number_raw as string,
     supertype: (r.supertype as string | null) ?? null,
     rarity: (r.rarity as string | null) ?? null,
@@ -138,7 +140,7 @@ export interface CardDetail {
 export async function getCardBySlug(slug: string, lang: Lang): Promise<CardDetail | null> {
   const best = BEST_IMAGE.replaceAll('$LANG', '$2');
   const res = await query<Record<string, unknown>>(
-    `SELECT cp.id, cp.slug, cs.set_id, cp.collector_number_raw, cp.supertype, cp.rarity,
+    `SELECT cp.id, cp.slug, cs.set_id, cs.ptcg_code, cp.collector_number_raw, cp.supertype, cp.rarity,
             cp.is_promo, COALESCE(cl.name, len.name) AS name,
             img.storage_key, img.remote_url, img.dpi_at_trim, img.lang AS img_lang
      FROM card_print cp
