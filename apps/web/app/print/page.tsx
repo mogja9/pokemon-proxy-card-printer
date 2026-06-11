@@ -12,6 +12,7 @@ export default function PrintPage() {
   const [target, setTarget] = useState('pdf');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
+  const [warn, setWarn] = useState('');
 
   const total = items.reduce((n, x) => n + x.qty, 0);
   const sheets = Math.ceil(total / 9);
@@ -19,6 +20,7 @@ export default function PrintPage() {
   async function generate() {
     setBusy(true);
     setErr('');
+    setWarn('');
     try {
       const res = await fetch('/api/render', {
         method: 'POST',
@@ -33,6 +35,8 @@ export default function PrintPage() {
         }),
       });
       if (!res.ok) throw new Error((await res.text()) || `render failed (${res.status})`);
+      const w = res.headers.get('x-render-warnings');
+      if (w) setWarn(decodeURIComponent(w));
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -127,6 +131,7 @@ export default function PrintPage() {
         <button className="ghost" onClick={clear}>Clear list</button>
       </div>
       {err && <p style={{ color: '#ff9a9a' }}>{err}</p>}
+      {warn && <p style={{ color: '#e8c06a' }}>⚠ {warn}</p>}
       <p style={{ color: 'var(--muted)', fontSize: 12 }}>
         Cards print at the fixed 63x88mm size. With a gutter, cut on the corner marks; bleed requires A4.
       </p>

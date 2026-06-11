@@ -82,12 +82,24 @@ export async function POST(req: NextRequest): Promise<Response> {
   if (!printItems.length) return new Response('no resolvable images for these cards', { status: 400 });
 
   const dpi = body.dpi === 600 ? 600 : 300;
+  // surface render-time warnings to the client (clipping, paper switch, MPC
+  // over-capacity) via an ASCII-safe header; the body is the binary artifact.
+  const warnHeader = (msgs: string[]): Record<string, string> =>
+    msgs.length ? { 'x-render-warnings': encodeURIComponent(msgs.join(' | ')) } : {};
+
   if (body.target === 'mpc') {
     const r = await renderMpcZip(printItems, { dpi });
+    const warnings = r.exceedsCapacity
+      ? [
+          `${r.totalCards} cards exceeds MakePlayingCards' largest single order (${r.bracket}); ` +
+            `split the list into multiple orders.`,
+        ]
+      : [];
     return new Response(new Uint8Array(r.zip), {
       headers: {
         'content-type': 'application/zip',
         'content-disposition': 'attachment; filename="proxies-mpc.zip"',
+        ...warnHeader(warnings),
       },
     });
   }
@@ -101,6 +113,7 @@ export async function POST(req: NextRequest): Promise<Response> {
     headers: {
       'content-type': 'application/pdf',
       'content-disposition': 'attachment; filename="proxies.pdf"',
+      ...warnHeader(r.warnings),
     },
   });
 }
