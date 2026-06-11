@@ -125,3 +125,21 @@ test('settingsForLang: nameEn tokenized as English; name in the index locale', (
   const name = ja.localizedAttributes?.find((a) => a.attributePatterns.includes('name'));
   assert.deepEqual(name?.locales, ['jpn']);
 });
+
+test('rowToDoc: defensive array coercion (non-array -> [], non-numeric filtered)', () => {
+  const doc = rowToDoc({
+    card_print_id: '33333333-3333-3333-3333-333333333333',
+    requested_lang: 'en',
+    set_id: 'sv01',
+    slug: 'sv01-1',
+    collector_number_raw: '1',
+    display_name: 'X',
+    name_en: 'X',
+    subtypes: null, // not an array -> []
+    types: 'Fire', // a bare string, not an array -> []
+    national_pokedex: [6, 'bad', '25'], // non-numeric entry dropped -> [6, 25]
+  });
+  assert.deepEqual(doc.subtypes, []);
+  assert.deepEqual(doc.types, []);
+  assert.deepEqual(doc.nationalPokedex, [6, 25]);
+});
