@@ -34,6 +34,12 @@ function write(items: CartItem[]): void {
   window.dispatchEvent(new Event(EVT));
 }
 
+function mergeInto(cur: CartItem[], it: Omit<CartItem, 'qty'>, qty: number): void {
+  const i = cur.findIndex((x) => x.slug === it.slug && x.lang === it.lang);
+  if (i >= 0) cur[i]!.qty += qty;
+  else cur.push({ ...it, qty });
+}
+
 export function useCart() {
   const [items, setItems] = useState<CartItem[]>([]);
   useEffect(() => {
@@ -49,9 +55,17 @@ export function useCart() {
 
   const add = useCallback((it: Omit<CartItem, 'qty'>, qty = 1) => {
     const cur = read();
-    const i = cur.findIndex((x) => x.slug === it.slug && x.lang === it.lang);
-    if (i >= 0) cur[i]!.qty += qty;
-    else cur.push({ ...it, qty });
+    mergeInto(cur, it, qty);
+    write(cur);
+  }, []);
+
+  // bulk add (e.g. decklist import): ONE read + ONE write + ONE change event
+  // for the whole batch, not one per card - avoids an O(n^2) localStorage
+  // re-serialize + a render storm when importing a 60-card deck.
+  const addMany = useCallback((entries: { item: Omit<CartItem, 'qty'>; qty: number }[]) => {
+    if (!entries.length) return;
+    const cur = read();
+    for (const { item, qty } of entries) mergeInto(cur, item, qty);
     write(cur);
   }, []);
 
@@ -69,5 +83,5 @@ export function useCart() {
   const clear = useCallback(() => write([]), []);
 
   const count = items.reduce((n, x) => n + x.qty, 0);
-  return { items, count, add, setQty, remove, clear };
+  return { items, count, add, addMany, setQty, remove, clear };
 }

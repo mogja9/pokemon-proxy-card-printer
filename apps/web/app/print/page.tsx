@@ -11,7 +11,7 @@ interface Unresolved {
 }
 
 export default function PrintPage() {
-  const { items, add, setQty, remove, clear } = useCart();
+  const { items, addMany, setQty, remove, clear } = useCart();
   const [paper, setPaper] = useState('A4');
   const [dpi, setDpi] = useState('300');
   const [bleed, setBleed] = useState(false);
@@ -81,9 +81,12 @@ export default function PrintPage() {
         resolved: { qty: number; name: string; slug: string; lang: string }[];
         unresolved: Unresolved[];
       };
-      for (const r of data.resolved) {
-        add({ slug: r.slug, lang: r.lang, name: r.name, imageUrl: null }, r.qty);
-      }
+      addMany(
+        data.resolved.map((r) => ({
+          item: { slug: r.slug, lang: r.lang, name: r.name, imageUrl: null },
+          qty: r.qty,
+        })),
+      );
       setUnresolved(data.unresolved);
       const added = data.resolved.reduce((n, r) => n + r.qty, 0);
       setImportMsg(

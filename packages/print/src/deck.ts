@@ -77,26 +77,43 @@ export interface DeckResolution {
 /** Cap on entries resolved per request (a deck is 60; allow slack for sideboards). */
 export const MAX_DECK_ENTRIES = 200;
 
-/** $1 = set code (ptcg_code), $2 = printed number. */
-export const DECK_BY_SETCODE_SQL = `
-  SELECT cp.slug
-  FROM card_print cp
-  JOIN card_set cs ON cs.id = cp.card_set_id
-  WHERE lower(cs.ptcg_code) = lower($1)
-    AND cp.collector_number_norm = normalize_collector_number($2)
-    AND NOT cp.is_suppressed
-  ORDER BY cp.id
-  LIMIT 1`;
+/**
+ * Batched resolution: ONE query for the whole deck instead of one per line
+ * (a 60-card list was up to 120 round-trips). unnest(...) WITH ORDINALITY zips
+ * the input arrays and a LEFT JOIN LATERAL yields the slug (or NULL) per row,
+ * keyed by the 1-based ordinality so results map back to the input order.
+ *
+ * DECK_BY_SETCODE_BATCH_SQL: $1 = set codes[], $2 = numbers[] (parallel arrays).
+ */
+export const DECK_BY_SETCODE_BATCH_SQL = `
+  SELECT v.idx, best.slug
+  FROM unnest($1::text[], $2::text[]) WITH ORDINALITY AS v(set_code, num, idx)
+  LEFT JOIN LATERAL (
+    SELECT cp.slug
+    FROM card_print cp
+    JOIN card_set cs ON cs.id = cp.card_set_id
+    WHERE lower(cs.ptcg_code) = lower(v.set_code)
+      AND cp.collector_number_norm = normalize_collector_number(v.num)
+      AND NOT cp.is_suppressed
+    ORDER BY cp.id
+    LIMIT 1
+  ) best ON TRUE
+  ORDER BY v.idx`;
 
-/** $1 = card name, $2 = requested lang (matched there or in EN). */
-export const DECK_BY_NAME_SQL = `
-  SELECT cp.slug
-  FROM card_print cp
-  JOIN card_localization cl ON cl.card_print_id = cp.id AND cl.lang IN ($2, 'en')
-  JOIN card_set cs ON cs.id = cp.card_set_id
-  WHERE lower(cl.name) = lower($1) AND NOT cp.is_suppressed
-  ORDER BY (cl.lang = $2) DESC, cs.release_date DESC NULLS LAST, cs.set_id
-  LIMIT 1`;
+/** DECK_BY_NAME_BATCH_SQL: $1 = names[], $2 = requested lang (matched there or EN). */
+export const DECK_BY_NAME_BATCH_SQL = `
+  SELECT v.idx, best.slug
+  FROM unnest($1::text[]) WITH ORDINALITY AS v(name, idx)
+  LEFT JOIN LATERAL (
+    SELECT cp.slug
+    FROM card_print cp
+    JOIN card_localization cl ON cl.card_print_id = cp.id AND cl.lang IN ($2, 'en')
+    JOIN card_set cs ON cs.id = cp.card_set_id
+    WHERE lower(cl.name) = lower(v.name) AND NOT cp.is_suppressed
+    ORDER BY (cl.lang = $2) DESC, cs.release_date DESC NULLS LAST, cs.set_id
+    LIMIT 1
+  ) best ON TRUE
+  ORDER BY v.idx`;
 
 /**
  * Resolve a decklist to card_print slugs. (setCode, number) is tried first via
@@ -106,22 +123,49 @@ export const DECK_BY_NAME_SQL = `
  */
 export async function resolveDeckList(text: string, lang: Lang): Promise<DeckResolution> {
   const entries = parseDeckList(text).slice(0, MAX_DECK_ENTRIES);
+  const slugFor = new Array<string | null>(entries.length).fill(null);
+
+  // Pass 1 (one query): entries that carry a (setCode, number).
+  const codeIdx: number[] = [];
+  const codes: string[] = [];
+  const nums: string[] = [];
+  entries.forEach((e, i) => {
+    if (e.setCode && e.number) {
+      codeIdx.push(i);
+      codes.push(e.setCode);
+      nums.push(e.number);
+    }
+  });
+  if (codeIdx.length) {
+    const r = await query<{ idx: number; slug: string | null }>(DECK_BY_SETCODE_BATCH_SQL, [
+      codes,
+      nums,
+    ]);
+    for (const row of r.rows) slugFor[codeIdx[Number(row.idx) - 1]!] = row.slug ?? null;
+  }
+
+  // Pass 2 (one query): everything still unresolved, by name (Trainer/Energy,
+  // or a set code that did not map).
+  const nameIdx: number[] = [];
+  const names: string[] = [];
+  entries.forEach((e, i) => {
+    if (slugFor[i] == null) {
+      nameIdx.push(i);
+      names.push(e.name);
+    }
+  });
+  if (nameIdx.length) {
+    const r = await query<{ idx: number; slug: string | null }>(DECK_BY_NAME_BATCH_SQL, [
+      names,
+      lang,
+    ]);
+    for (const row of r.rows) slugFor[nameIdx[Number(row.idx) - 1]!] = row.slug ?? null;
+  }
+
   const resolved: ResolvedDeckItem[] = [];
   const unresolved: UnresolvedDeckItem[] = [];
-
-  for (const e of entries) {
-    let slug: string | null = null;
-
-    if (e.setCode && e.number) {
-      const r = await query<{ slug: string }>(DECK_BY_SETCODE_SQL, [e.setCode, e.number]);
-      slug = r.rows[0]?.slug ?? null;
-    }
-
-    if (!slug) {
-      const r = await query<{ slug: string }>(DECK_BY_NAME_SQL, [e.name, lang]);
-      slug = r.rows[0]?.slug ?? null;
-    }
-
+  entries.forEach((e, i) => {
+    const slug = slugFor[i];
     if (slug) {
       resolved.push({ qty: e.qty, name: e.name, slug, lang });
     } else {
@@ -131,7 +175,6 @@ export async function resolveDeckList(text: string, lang: Lang): Promise<DeckRes
         reason: e.setCode ? `not found (${e.setCode} ${e.number})` : 'not found by name',
       });
     }
-  }
-
+  });
   return { resolved, unresolved };
 }
