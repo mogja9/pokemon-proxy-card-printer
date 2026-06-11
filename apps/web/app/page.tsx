@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { LAUNCH_LANGS, type Lang } from '@proxyforge/config';
-import { listSets, listSupertypes } from '@/lib/db';
+import { listSets, listSupertypes, type BrowseSort } from '@/lib/db';
 import { searchCards } from '@/lib/search';
 import CardCard from '@/components/CardCard';
 
@@ -14,6 +14,15 @@ function pickLang(v: string | undefined): Lang {
   return (LAUNCH_LANGS as readonly string[]).includes(v ?? '') ? (v as Lang) : 'en';
 }
 
+const SORTS: { value: BrowseSort; label: string }[] = [
+  { value: 'newest', label: 'Newest' },
+  { value: 'oldest', label: 'Oldest' },
+  { value: 'set', label: 'By set' },
+];
+function pickSort(v: string | undefined): BrowseSort {
+  return SORTS.some((s) => s.value === v) ? (v as BrowseSort) : 'newest';
+}
+
 export default async function Browse({ searchParams }: { searchParams: Promise<SP> }) {
   const sp = await searchParams;
   const lang = pickLang(str(sp.lang));
@@ -21,12 +30,13 @@ export default async function Browse({ searchParams }: { searchParams: Promise<S
   const set = str(sp.set);
   const supertype = str(sp.supertype);
   const promoOnly = str(sp.promo) === '1';
+  const sort = pickSort(str(sp.sort));
   const page = Math.max(1, Number(str(sp.page) ?? '1') || 1);
 
   let res, sets, types, err: string | null = null;
   try {
     [res, sets, types] = await Promise.all([
-      searchCards({ lang, ...(q ? { q } : {}), ...(set ? { set } : {}), ...(supertype ? { supertype } : {}), promoOnly, page }),
+      searchCards({ lang, ...(q ? { q } : {}), ...(set ? { set } : {}), ...(supertype ? { supertype } : {}), promoOnly, sort, page }),
       listSets(),
       listSupertypes(),
     ]);
@@ -42,6 +52,7 @@ export default async function Browse({ searchParams }: { searchParams: Promise<S
     if (set) p.set('set', set);
     if (supertype) p.set('supertype', supertype);
     if (promoOnly) p.set('promo', '1');
+    if (sort !== 'newest') p.set('sort', sort);
     for (const [k, v] of Object.entries(over)) v ? p.set(k, v) : p.delete(k);
     return `/?${p.toString()}`;
   };
@@ -68,6 +79,11 @@ export default async function Browse({ searchParams }: { searchParams: Promise<S
           </select>
         </label>
         <label>Promo<input type="checkbox" name="promo" value="1" defaultChecked={promoOnly} /></label>
+        <label>Sort
+          <select name="sort" defaultValue={sort}>
+            {SORTS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
+          </select>
+        </label>
         <button type="submit">Filter</button>
       </form>
 

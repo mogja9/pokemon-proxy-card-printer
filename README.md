@@ -109,7 +109,7 @@ npm run web:dev                        # http://localhost:3000
 # or: npm run web:build && npm -w @proxyforge/web run start
 ```
 
-Faceted browse (set / language / type / promo + name search), card detail with a
+Faceted browse (set / language / type / promo + name search, sortable by newest/oldest/set), card detail with a
 language switcher, DPI / English-fallback badges, and a quantity selector when
 adding to the list (add 4 copies in one click), a localStorage print list,
 and a one-click render to home PDF or MakePlayingCards ZIP (with paper, DPI,

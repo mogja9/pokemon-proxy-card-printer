@@ -44,6 +44,7 @@ export async function searchCards(p: SearchParams): Promise<SearchResult> {
         ...(p.set ? { set: p.set } : {}),
         ...(p.supertype ? { supertype: p.supertype } : {}),
         promoOnly: p.promoOnly ?? false,
+        ...(p.sort ? { sort: p.sort } : {}),
         ...(p.page ? { page: p.page } : {}),
         ...(p.pageSize ? { pageSize: p.pageSize } : {}),
       });

@@ -56,15 +56,27 @@ function mapRow(r: Record<string, unknown>, lang: Lang): CardRow {
   };
 }
 
+export type BrowseSort = 'newest' | 'oldest' | 'set';
+
 export interface SearchParams {
   lang: Lang;
   q?: string;
   set?: string;
   supertype?: string;
   promoOnly?: boolean;
+  sort?: BrowseSort;
   page?: number;
   pageSize?: number;
 }
+
+// Mirror of the Meilisearch browse sort (search.ts BROWSE_SORTS). The collector
+// tail keeps cards in printed order within a set.
+const SORT_TAIL = 'cs.set_id, cp.collector_prefix, cp.collector_number_num NULLS LAST, cp.collector_number_raw';
+const SORT_ORDER_BY: Record<BrowseSort, string> = {
+  newest: `cs.release_date DESC NULLS LAST, ${SORT_TAIL}`,
+  oldest: `cs.release_date ASC NULLS LAST, ${SORT_TAIL}`,
+  set: SORT_TAIL,
+};
 
 export interface SearchResult {
   cards: CardRow[];
@@ -111,8 +123,7 @@ export async function searchCards(p: SearchParams): Promise<SearchResult> {
      JOIN card_localization cl ON cl.card_print_id = cp.id AND cl.lang = $1
      ${best}
      WHERE ${whereSql}
-     ORDER BY cs.release_date DESC NULLS LAST, cs.set_id,
-              cp.collector_prefix, cp.collector_number_num NULLS LAST, cp.collector_number_raw
+     ORDER BY ${SORT_ORDER_BY[p.sort ?? 'newest']}
      LIMIT $${params.length - 1} OFFSET $${params.length}`,
     params,
   );
