@@ -163,7 +163,18 @@ export function loadCompliance(env: NodeJS.ProcessEnv = process.env): Compliance
     blockOfficialBack: true,
     preserveKrWatermark: true,
     notTournamentLegal: true,
-    trademarkedTermsBanned: ['pokemon', 'pokémon', 'poké', 'pokeball', 'nintendo'],
+    // Keep in sync with scripts/brand-lint.mjs BANNED (the CI enforcer). Unifying
+    // into one source is a follow-up (the .mjs cannot import this TS module
+    // without a build step); see docs/OPEN_ITEMS.md.
+    trademarkedTermsBanned: [
+      'pokemon',
+      'pokémon',
+      'poké',
+      'pokeball',
+      'poke-ball',
+      'nintendo',
+      'gamefreak',
+    ],
   };
 }
 
