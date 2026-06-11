@@ -251,8 +251,3 @@ export async function recordSetState(
     [source, key, fingerprint, cardCount],
   );
 }
-
-export async function refreshCardDisplay(client: PoolClient): Promise<void> {
-  // CONCURRENTLY requires the unique index (present) and cannot run in a txn block.
-  await client.query('REFRESH MATERIALIZED VIEW card_display');
-}
