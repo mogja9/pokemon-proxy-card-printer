@@ -31,11 +31,24 @@ export default function PrintPage() {
   const [importing, setImporting] = useState(false);
   const [importMsg, setImportMsg] = useState('');
   const [unresolved, setUnresolved] = useState<Unresolved[]>([]);
+  const [copied, setCopied] = useState(false);
 
   const total = items.reduce((n, x) => n + x.qty, 0);
   const sheets = Math.ceil(total / 9);
   // MPC accepts at most MPC_MAX_ORDER cards per order; warn before generating.
   const mpcOverCapacity = target === 'mpc' && total > MPC_MAX_ORDER;
+  // a name-based decklist of the current list (re-importable; round-trips with Import)
+  const exportText = items.map((i) => `${i.qty} ${i.name}`).join('\n');
+
+  async function copyDeck() {
+    try {
+      await navigator.clipboard.writeText(exportText);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      /* clipboard blocked (e.g. insecure context); the textarea is selectable */
+    }
+  }
 
   async function generate() {
     setBusy(true);
@@ -196,6 +209,23 @@ export default function PrintPage() {
           ))}
         </tbody>
       </table>
+
+      <details className="export">
+        <summary>Export this list</summary>
+        <p style={{ color: 'var(--muted)', fontSize: 12 }}>
+          A name-based decklist you can save, share, or re-import on another device (it
+          round-trips with Import above).
+        </p>
+        <textarea
+          readOnly
+          value={exportText}
+          rows={Math.min(12, Math.max(3, items.length))}
+          style={{ width: '100%', fontFamily: 'monospace', boxSizing: 'border-box' }}
+        />
+        <button className="ghost" onClick={copyDeck}>
+          {copied ? 'Copied ✓' : 'Copy to clipboard'}
+        </button>
+      </details>
 
       <div className="optrow">
         <label>Output

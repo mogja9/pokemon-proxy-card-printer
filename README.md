@@ -122,6 +122,11 @@ the print list in one step - set code + number via `card_set.ptcg_code`, with a
 name fallback. Unmatched lines (e.g. PTCGL promo renumbering) are listed for
 manual fixup.
 
+**Decklist export.** "Export this list" on the print page emits a name-based
+decklist (`<qty> <name>`) with a copy button, so you can save a list or move it
+between devices (the localStorage cart is per-browser); it round-trips back
+through Import.
+
 ### Printing (Phase 4)
 
 ```bash
