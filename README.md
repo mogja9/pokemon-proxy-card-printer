@@ -194,9 +194,11 @@ Still open (roughly in priority order):
       (`cdn.malie.io/.../tcgl/export/index.json`) -> per-set image URLs, measured
       at exactly **296 DPI** (733x1024px), no per-card scraping. Covers all six
       Western langs (en/fr/de/it/es/pt) and **upgrades fr/de/it/es/pt from TCGdex
-      ~242 to 296**. No formal license (rides the attorney gate); needs ID mapping
-      + polite fetch. **Next: build a `malie` ImageOrigin adapter** (see below).
-      No ja/ko/zh - the JA scraper is still the native-JA path.
+      ~242 to 296**. No formal license (rides the attorney gate).
+      **DONE:** the `malie_io` ImageOrigin adapter is built and manifest-driven
+      (set-gating + half-set/promo id mapping incl. 151 / Prismatic Evolutions);
+      remaining is the live-DB set-id reconciliation for ~6 alt/energy sets (see
+      `docs/OPEN_ITEMS.md`). No ja/ko/zh - the JA scraper is still the native-JA path.
 - [ ] **Production serve plane** - SeaweedFS object storage + imgproxy
       derivatives (today images are local-FS only).
 - [x] **Search refinement - per-language indexes DONE.** Replaced the single
@@ -209,8 +211,9 @@ Still open (roughly in priority order):
       (see `docs/OPEN_ITEMS.md`).
 - [ ] **Optional Real-ESRGAN upscaling** (Phase 6) for low-DPI sources.
 - [ ] **KR / Simplified-Chinese** image scarcity + watermarked-source legal review.
-- [ ] **Coverage dashboard + admin UI** for the `card_print_review` queue
-      (per-set / per-language cards-with-image vs without).
+- [~] **Coverage report + admin UI.** The per-set / per-language image-coverage
+      report is DONE (`npm run images -- coverage`: native / EN-fallback / hi-res /
+      missing + cov%). Still open: a web admin UI for the `card_print_review` queue.
 - [ ] **Attorney sign-off (HARD launch gate)** - ephemeral-cache-as-hosting risk,
       image redistribution terms, KR watermarked art, donation copy.
 - [ ] **Public name + domain** - the project is now "Proxy Printer"; the npm
