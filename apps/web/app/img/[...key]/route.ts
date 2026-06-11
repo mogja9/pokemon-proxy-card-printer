@@ -1,5 +1,5 @@
 import { readFile } from 'node:fs/promises';
-import { join, resolve } from 'node:path';
+import { imagesBaseDir, safeImagePath } from '@proxyforge/print';
 
 export const runtime = 'nodejs';
 
@@ -10,10 +10,10 @@ export async function GET(
 ): Promise<Response> {
   const { key } = await params;
   const rel = key.join('/');
-  if (rel.includes('..')) return new Response('bad request', { status: 400 });
-  const base = process.env.IMAGES_DIR ? resolve(process.env.IMAGES_DIR) : resolve(process.cwd(), 'data/images');
-  const path = join(base, rel);
-  if (!path.startsWith(base)) return new Response('bad request', { status: 400 });
+  // shared (tested) base-dir + traversal guard - the SAME logic the print/render
+  // path uses, so where the pipeline WRITES is exactly where this READS.
+  const path = safeImagePath(imagesBaseDir(), rel);
+  if (!path) return new Response('bad request', { status: 400 });
   try {
     const buf = await readFile(path);
     return new Response(new Uint8Array(buf), {
