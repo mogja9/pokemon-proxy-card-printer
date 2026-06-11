@@ -44,17 +44,17 @@ export type OverlayAdapter = 'none' | 'ptcgio' | 'scrydex';
 export type ServingMode = 'ephemeral' | 'cache' | 'hotlink' | 'generate';
 export type CardBack = 'none' | 'generic';
 
-function envStr(key: string, fallback: string): string {
-  const v = process.env[key];
+function envStr(env: NodeJS.ProcessEnv, key: string, fallback: string): string {
+  const v = env[key];
   return v === undefined || v === '' ? fallback : v;
 }
-function envBool(key: string, fallback: boolean): boolean {
-  const v = process.env[key];
+function envBool(env: NodeJS.ProcessEnv, key: string, fallback: boolean): boolean {
+  const v = env[key];
   if (v === undefined || v === '') return fallback;
   return v === 'true' || v === '1' || v === 'yes';
 }
-function envNum(key: string, fallback: number): number {
-  const v = process.env[key];
+function envNum(env: NodeJS.ProcessEnv, key: string, fallback: number): number {
+  const v = env[key];
   if (v === undefined || v === '') return fallback;
   const n = Number(v);
   return Number.isFinite(n) ? n : fallback;
@@ -94,38 +94,37 @@ export interface AppConfig {
 
 /** Read + validate environment once. Throws on clearly-broken config. */
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
-  const overlay = envStr('OVERLAY_ADAPTER', 'none') as OverlayAdapter;
+  const overlay = envStr(env, 'OVERLAY_ADAPTER', 'none') as OverlayAdapter;
   if (!['none', 'ptcgio', 'scrydex'].includes(overlay)) {
     throw new Error(`OVERLAY_ADAPTER must be none|ptcgio|scrydex, got '${overlay}'`);
   }
-  const backend = envStr('SEARCH_BACKEND', 'meili') as 'meili' | 'pg';
+  const backend = envStr(env, 'SEARCH_BACKEND', 'meili') as 'meili' | 'pg';
   return {
-    databaseUrl: envStr(
+    databaseUrl: envStr(env, 
       'DATABASE_URL',
       'postgresql://proxyforge:change_me_locally@localhost:5432/proxyforge',
     ),
-    tcgdexBaseUrl: envStr('TCGDEX_BASE_URL', 'https://api.tcgdex.net/v2').replace(/\/$/, ''),
-    launchLangs: parseLangs(envStr('LAUNCH_LANGS', LAUNCH_LANGS.join(','))),
+    tcgdexBaseUrl: envStr(env, 'TCGDEX_BASE_URL', 'https://api.tcgdex.net/v2').replace(/\/$/, ''),
+    launchLangs: parseLangs(envStr(env, 'LAUNCH_LANGS', LAUNCH_LANGS.join(','))),
     overlayAdapter: overlay,
-    pokemontcgIoApiKey: envStr('POKEMONTCG_IO_API_KEY', ''),
+    pokemontcgIoApiKey: envStr(env, 'POKEMONTCG_IO_API_KEY', ''),
     ingest: {
-      tcgdexRps: envNum('INGEST_TCGDEX_RPS', 4),
-      scrapeRps: envNum('INGEST_SCRAPE_RPS', 0.5),
+      tcgdexRps: envNum(env, 'INGEST_TCGDEX_RPS', 4),
+      scrapeRps: envNum(env, 'INGEST_SCRAPE_RPS', 0.5),
     },
     search: {
       backend: backend === 'pg' ? 'pg' : 'meili',
-      meiliUrl: envStr('MEILI_URL', 'http://localhost:7700'),
-      meiliMasterKey: envStr('MEILI_MASTER_KEY', 'change_me_locally'),
+      meiliUrl: envStr(env, 'MEILI_URL', 'http://localhost:7700'),
+      meiliMasterKey: envStr(env, 'MEILI_MASTER_KEY', 'change_me_locally'),
     },
     storage: {
-      endpoint: envStr('S3_ENDPOINT', 'http://localhost:8333'),
-      accessKey: envStr('S3_ACCESS_KEY', 'proxyforge'),
-      secretKey: envStr('S3_SECRET_KEY', 'change_me_locally'),
-      bucketSource: envStr('S3_BUCKET_SOURCE', 'pf-src'),
-      bucketArtifacts: envStr('S3_BUCKET_ARTIFACTS', 'pf-artifacts'),
+      endpoint: envStr(env, 'S3_ENDPOINT', 'http://localhost:8333'),
+      accessKey: envStr(env, 'S3_ACCESS_KEY', 'proxyforge'),
+      secretKey: envStr(env, 'S3_SECRET_KEY', 'change_me_locally'),
+      bucketSource: envStr(env, 'S3_BUCKET_SOURCE', 'pf-src'),
+      bucketArtifacts: envStr(env, 'S3_BUCKET_ARTIFACTS', 'pf-artifacts'),
     },
-    redisUrl: envStr('REDIS_URL', 'redis://localhost:6379'),
-    // void env to satisfy noUnusedParameters-style intent; env is the source
+    redisUrl: envStr(env, 'REDIS_URL', 'redis://localhost:6379'),
   };
 }
 
@@ -155,13 +154,12 @@ export interface ComplianceConfig {
 }
 
 export function loadCompliance(env: NodeJS.ProcessEnv = process.env): ComplianceConfig {
-  void env;
   return {
-    defaultServingMode: envStr('COMPLIANCE_DEFAULT_SERVING_MODE', 'ephemeral') as ServingMode,
-    ephemeralTtlDays: envNum('COMPLIANCE_EPHEMERAL_TTL_DAYS', 7),
-    noindex: envBool('COMPLIANCE_NOINDEX', true),
-    pricingEnabled: envBool('COMPLIANCE_PRICING_ENABLED', false),
-    cardBack: envStr('COMPLIANCE_CARD_BACK', 'none') as CardBack,
+    defaultServingMode: envStr(env, 'COMPLIANCE_DEFAULT_SERVING_MODE', 'ephemeral') as ServingMode,
+    ephemeralTtlDays: envNum(env, 'COMPLIANCE_EPHEMERAL_TTL_DAYS', 7),
+    noindex: envBool(env, 'COMPLIANCE_NOINDEX', true),
+    pricingEnabled: envBool(env, 'COMPLIANCE_PRICING_ENABLED', false),
+    cardBack: envStr(env, 'COMPLIANCE_CARD_BACK', 'none') as CardBack,
     blockOfficialBack: true,
     preserveKrWatermark: true,
     notTournamentLegal: true,
