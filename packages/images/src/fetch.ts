@@ -8,12 +8,17 @@ export interface FetchedImage {
   contentType: string;
 }
 
-/** GET an image. null on 404 (terminal). Throws on other failures. */
-export async function fetchImageBytes(url: string, timeoutMs = 20000): Promise<FetchedImage | null> {
+/** GET an image. null on 404 (terminal). Throws on other failures. fetchImpl is
+ *  injectable for tests; defaults to the global fetch. */
+export async function fetchImageBytes(
+  url: string,
+  opts: { timeoutMs?: number; fetchImpl?: typeof fetch } = {},
+): Promise<FetchedImage | null> {
+  const { timeoutMs = 20000, fetchImpl = fetch } = opts;
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), timeoutMs);
   try {
-    const res = await fetch(url, { signal: ctrl.signal, headers: { 'user-agent': UA } });
+    const res = await fetchImpl(url, { signal: ctrl.signal, headers: { 'user-agent': UA } });
     if (res.status === 404) return null;
     if (!res.ok) throw new Error(`image fetch ${res.status} for ${url}`);
     const bytes = Buffer.from(await res.arrayBuffer());
