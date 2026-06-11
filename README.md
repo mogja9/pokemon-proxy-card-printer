@@ -110,8 +110,10 @@ npm run web:dev                        # http://localhost:3000
 ```
 
 Faceted browse (set / language / type / promo + name search, sortable by newest/oldest/set, with a 24/48/96 per-page control and a one-click Clear when any filter is active), card detail with a
-language switcher, DPI / English-fallback badges, and a quantity selector when
-adding to the list (add 4 copies in one click), a localStorage print list,
+language switcher, DPI / English-fallback badges, a quantity selector when
+adding to the list (add 4 copies in one click) and a "copy decklist line"
+button (`1 <name> <SETCODE> <number>`, pasteable into a decklist and
+round-trippable through Import), a localStorage print list,
 and a one-click render to home PDF or MakePlayingCards ZIP (with paper, DPI,
 gutter, and bleed options). Search is served by Meilisearch with the Postgres
 fallback described above.

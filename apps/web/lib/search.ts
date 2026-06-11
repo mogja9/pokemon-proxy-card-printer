@@ -14,6 +14,7 @@ function docToRow(d: CardDoc, lang: Lang): CardRow {
     id: d.cardPrintId,
     slug: d.slug,
     setId: d.setId,
+    setCode: null, // browse rows do not need the PTCGL set code; the detail page (Postgres) fills it
     collector: d.collectorNumberRaw,
     supertype: d.supertype,
     rarity: d.rarity,

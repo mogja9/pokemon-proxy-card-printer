@@ -2,7 +2,9 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { LAUNCH_LANGS, type Lang } from '@proxyforge/config';
 import { getCardBySlug } from '@/lib/db';
+import { deckLineFor } from '@/lib/deckline';
 import AddToCart from '@/components/AddToCart';
+import CopyDeckLine from '@/components/CopyDeckLine';
 
 export const dynamic = 'force-dynamic';
 
@@ -66,7 +68,7 @@ export default async function CardPage({
           Dimmed languages have no localized scan; the print falls back to the English image.
         </p>
 
-        <div style={{ marginTop: 18 }}>
+        <div style={{ marginTop: 18, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
           <AddToCart
             slug={card.slug}
             lang={lang}
@@ -74,6 +76,7 @@ export default async function CardPage({
             imageUrl={card.imageUrl}
             supertype={card.supertype}
           />
+          <CopyDeckLine line={deckLineFor({ name: card.name, setCode: card.setCode, collector: card.collector })} />
         </div>
 
         <p style={{ color: 'var(--muted)', fontSize: 12, marginTop: 18 }}>
