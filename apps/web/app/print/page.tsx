@@ -4,6 +4,12 @@ import Link from 'next/link';
 import { LAUNCH_LANGS } from '@proxyforge/config';
 import { useCart } from '@/lib/cart';
 
+// MakePlayingCards' largest single-order bracket. Mirrors @proxyforge/print
+// MPC_MAX_ORDER, hardcoded because this client component cannot import the
+// print package (it pulls sharp into the browser bundle). The server enforces
+// the real value; this is only a pre-generate UI hint.
+const MPC_MAX_ORDER = 612;
+
 interface Unresolved {
   qty: number;
   name: string;
@@ -28,6 +34,8 @@ export default function PrintPage() {
 
   const total = items.reduce((n, x) => n + x.qty, 0);
   const sheets = Math.ceil(total / 9);
+  // MPC accepts at most MPC_MAX_ORDER cards per order; warn before generating.
+  const mpcOverCapacity = target === 'mpc' && total > MPC_MAX_ORDER;
 
   async function generate() {
     setBusy(true);
@@ -224,6 +232,12 @@ export default function PrintPage() {
         </button>
         <button className="ghost" onClick={clear}>Clear list</button>
       </div>
+      {mpcOverCapacity && (
+        <p style={{ color: '#e8c06a' }}>
+          ⚠ {total} cards exceeds MakePlayingCards&rsquo; largest single order ({MPC_MAX_ORDER}). The
+          ZIP still generates, but you&rsquo;ll need to split it into multiple MPC orders.
+        </p>
+      )}
       {warn && <p style={{ color: '#e8c06a' }}>⚠ {warn}</p>}
       <p style={{ color: 'var(--muted)', fontSize: 12 }}>
         Cards print at the fixed 63x88mm size. With a gutter, cut on the corner marks; bleed requires A4.
