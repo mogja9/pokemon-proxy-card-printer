@@ -1,6 +1,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { cardDocId, rowToDoc, INDEX_SETTINGS } from '../src/document.js';
+import {
+  cardDocId,
+  rowToDoc,
+  INDEX_SETTINGS,
+  indexNameForLang,
+  localeForLang,
+  settingsForLang,
+} from '../src/document.js';
 
 test('cardDocId joins uuid and lang with __ (id-safe even for zh-cn)', () => {
   assert.equal(cardDocId('abc-123', 'zh-cn'), 'abc-123__zh-cn');
@@ -90,4 +97,31 @@ test('INDEX_SETTINGS: name is the top searchable; lang/setId filterable; release
   assert.ok(INDEX_SETTINGS.sortableAttributes?.includes('releaseTs'));
   // must lift Meili's default 1000-hit cap so the full catalog is reachable
   assert.ok((INDEX_SETTINGS.pagination?.maxTotalHits ?? 0) > 1000);
+});
+
+test('indexNameForLang: per-language uid, safe for zh-cn', () => {
+  assert.equal(indexNameForLang('en'), 'cards_en');
+  assert.equal(indexNameForLang('zh-cn'), 'cards_zh-cn');
+});
+
+test('localeForLang: ISO-639-3 incl. CJK; unknown -> eng', () => {
+  assert.equal(localeForLang('ja'), 'jpn');
+  assert.equal(localeForLang('ko'), 'kor');
+  assert.equal(localeForLang('zh-cn'), 'cmn');
+  assert.equal(localeForLang('zh-tw'), 'cmn');
+  assert.equal(localeForLang('en'), 'eng');
+  assert.equal(localeForLang('??'), 'eng');
+});
+
+test('settingsForLang: nameEn tokenized as English; name in the index locale', () => {
+  const ja = settingsForLang('ja');
+  // base settings preserved
+  assert.equal(ja.searchableAttributes?.[0], 'name');
+  assert.ok((ja.pagination?.maxTotalHits ?? 0) > 1000);
+  // nameEn always English so cross-language English queries match the JA card
+  const nameEn = ja.localizedAttributes?.find((a) => a.attributePatterns.includes('nameEn'));
+  assert.deepEqual(nameEn?.locales, ['eng']);
+  // localized name uses this index's CJK locale
+  const name = ja.localizedAttributes?.find((a) => a.attributePatterns.includes('name'));
+  assert.deepEqual(name?.locales, ['jpn']);
 });

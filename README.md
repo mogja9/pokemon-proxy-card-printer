@@ -1,11 +1,15 @@
 # Proxy Printer
 
-A **free, open-source, self-hostable** website for finding any trading-card-game
+A **free, open-source, self-hostable** website for finding any **Pokémon TCG**
 card in every major language and printing **playtest proxies** at the fixed
 competitive card size (63x88 mm). Non-commercial; donations only.
 
-> The npm packages are scoped `@proxyforge/*` internally (the old working
-> codename); the public project name is **Proxy Printer**.
+> Naming: the public project name is **Proxy Printer** and every shipping
+> identity slot (npm scope `@proxyforge/*`, the docker-compose project) is kept
+> deliberately trademark-free - enforced by `scripts/brand-lint.mjs` per
+> `docs/ARCHITECTURE.md` sec.10. The GitHub repo is named descriptively
+> (`pokemon-proxy-card-printer`); "Pokémon" appears here and elsewhere only as
+> descriptive/nominative use, never in a brand slot.
 
 > Status: **Phases 0-4 done, plus the Meilisearch search backend.** Foundations
 > and the TCGdex data spine (Phase 1), the image pipeline (Phase 2: best
@@ -165,20 +169,37 @@ Meilisearch search backend with Postgres fallback.
 
 Still open (roughly in priority order):
 
-- [ ] **Image coverage.** Only cards with an image source are browseable; today
-      that is ~72% of prints (the read-model excludes imageless cards). Close the
-      gap with the two image sources below.
-- [ ] **JA native ~350 DPI scraper** (pokemon-card.com) - the only native >300
-      DPI Japanese source. Fragile (per-card detail-page scraping); needs a
-      circuit breaker + filename cache + EN fallback.
-- [ ] **malie.io EN hi-res path** - load-bearing for the $0 English hi-res route
-      since pokemontcg.io merged into paid Scrydex; availability and terms still
-      unverified.
+- [~] **Image coverage.** Only cards with an image source are browseable; the
+      read-model excludes imageless cards. The malie.io source (below) is now
+      wired manifest-driven and raises the five Western langs (en/fr/de/it/es) to
+      296 DPI - but **only for the ~28 TCGL/SV+Mega-era sets malie carries**;
+      older sets stay on TCGdex ~242, and JA native is blocked (below). Use
+      `npm run images -- coverage` to measure the remaining gap.
+- [ ] **JA native ~350 DPI scraper** (pokemon-card.com) - **BLOCKED on attorney
+      sign-off (assessed 2026-06-11).** pokemon-card.com is the rights-holder's own
+      site and its footer explicitly prohibits image reproduction
+      ("無断転載はお断りします"), making this the project's highest legal exposure -
+      do not build until explicitly cleared. Interim JA path stays TCGdex ~242
+      (malie has no JA). If cleared: per-card scraping + circuit breaker +
+      filename cache + EN fallback. See `docs/OPEN_ITEMS.md`.
+- [x] **malie.io EN hi-res path - VERIFIED LIVE (2026-06-11).** Confirmed the $0
+      replacement for the paywalled pokemontcg.io route: deterministic manifest
+      (`cdn.malie.io/.../tcgl/export/index.json`) -> per-set image URLs, measured
+      at exactly **296 DPI** (733x1024px), no per-card scraping. Covers all six
+      Western langs (en/fr/de/it/es/pt) and **upgrades fr/de/it/es/pt from TCGdex
+      ~242 to 296**. No formal license (rides the attorney gate); needs ID mapping
+      + polite fetch. **Next: build a `malie` ImageOrigin adapter** (see below).
+      No ja/ko/zh - the JA scraper is still the native-JA path.
 - [ ] **Production serve plane** - SeaweedFS object storage + imgproxy
       derivatives (today images are local-FS only).
-- [ ] **Search refinement** - the index is currently a single Meili index with a
-      `lang` filter; per-language indexes with CJK tokenizers (the architecture's
-      design) would improve ja/ko/zh recall.
+- [x] **Search refinement - per-language indexes DONE.** Replaced the single
+      `cards` index + `lang` filter with one index per language (`cards_en …
+      cards_zh-tw`) and per-index `localizedAttributes` (jpn/cmn/kor) for correct
+      CJK tokenization; `nameEn` stays searchable in every index so an English
+      query still finds the JA card. Contained to `@proxyforge/search` (the web
+      `searchCards` API is unchanged). Needs a live-Meili smoke test. Remaining
+      follow-up: federated `/multi-search` for cross-language results in one query
+      (see `docs/OPEN_ITEMS.md`).
 - [ ] **Optional Real-ESRGAN upscaling** (Phase 6) for low-DPI sources.
 - [ ] **KR / Simplified-Chinese** image scarcity + watermarked-source legal review.
 - [ ] **Coverage dashboard + admin UI** for the `card_print_review` queue

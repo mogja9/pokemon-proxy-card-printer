@@ -2,26 +2,21 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildSearchRequest, filterValue } from '../src/search.js';
 
-test('lang is always filtered; sort applied only when there is no text query', () => {
+test('no lang filter (the index is per-lang); sort only when no text query', () => {
   const browse = buildSearchRequest({ lang: 'en' });
-  assert.deepEqual(browse.filter, ['lang = "en"']);
+  assert.deepEqual(browse.filter, []); // lang is the index, not a filter
   assert.deepEqual(browse.sort, ['releaseTs:desc', 'setId:asc', 'collectorNumberNum:asc']);
   assert.equal(browse.q, '');
 
   const searched = buildSearchRequest({ lang: 'ja', q: 'pikachu' });
   assert.equal(searched.q, 'pikachu');
   assert.equal(searched.sort, undefined); // relevance ranking wins
-  assert.deepEqual(searched.filter, ['lang = "ja"']);
+  assert.deepEqual(searched.filter, []);
 });
 
-test('set/supertype/promo filters compose in order', () => {
+test('set/supertype/promo filters compose in order (no lang)', () => {
   const r = buildSearchRequest({ lang: 'en', set: 'base1', supertype: 'Pokemon', promoOnly: true });
-  assert.deepEqual(r.filter, [
-    'lang = "en"',
-    'setId = "base1"',
-    'supertype = "Pokemon"',
-    'isPromo = true',
-  ]);
+  assert.deepEqual(r.filter, ['setId = "base1"', 'supertype = "Pokemon"', 'isPromo = true']);
 });
 
 test('pageSize clamps to [1,120]; page floors at 1; defaults to 48', () => {

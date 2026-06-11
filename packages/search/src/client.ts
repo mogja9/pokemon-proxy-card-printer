@@ -46,6 +46,8 @@ export interface IndexSettings {
   rankingRules?: string[];
   /** Meili caps reported/ reachable hits at maxTotalHits (default 1000). */
   pagination?: { maxTotalHits?: number };
+  /** Per-attribute language hints (Meili >=1.10) so CJK fields tokenize right. */
+  localizedAttributes?: Array<{ attributePatterns: string[]; locales: string[] }>;
 }
 
 export class MeiliError extends Error {

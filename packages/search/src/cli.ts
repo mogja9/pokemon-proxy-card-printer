@@ -14,7 +14,8 @@
  * catalog. With SEARCH_BACKEND=meili the web reads from this index.
  */
 import { closePool } from '@proxyforge/db';
-import { INDEX_NAME, INDEX_SETTINGS, PRIMARY_KEY } from './document.js';
+import { LAUNCH_LANGS } from '@proxyforge/config';
+import { INDEX_PREFIX, indexNameForLang, settingsForLang, PRIMARY_KEY } from './document.js';
 import { meiliFromConfig } from './index.js';
 import { reindexAll } from './reindex.js';
 import { searchDocs } from './search.js';
@@ -54,15 +55,18 @@ async function main(): Promise<void> {
             `  npm run ingest -- backfill --full --refresh-mv`,
         );
       } else {
-        console.log(`reindex complete: ${res.indexed} documents in index '${INDEX_NAME}'`);
+        console.log(`reindex complete: ${res.indexed} documents across '${INDEX_PREFIX}_<lang>' indexes`);
       }
       break;
     }
     case 'settings': {
-      await client.ensureIndex(INDEX_NAME, PRIMARY_KEY);
-      const task = await client.updateSettings(INDEX_NAME, INDEX_SETTINGS);
-      await client.waitForTask(task.taskUid);
-      console.log('settings applied:', JSON.stringify(INDEX_SETTINGS));
+      for (const lang of LAUNCH_LANGS) {
+        const uid = indexNameForLang(lang);
+        await client.ensureIndex(uid, PRIMARY_KEY);
+        const task = await client.updateSettings(uid, settingsForLang(lang));
+        await client.waitForTask(task.taskUid);
+        console.log(`settings applied: ${uid}`);
+      }
       break;
     }
     case 'status': {
@@ -71,22 +75,33 @@ async function main(): Promise<void> {
         process.exitCode = 1;
         break;
       }
-      try {
-        const s = await client.stats(INDEX_NAME);
-        console.log(
-          `meilisearch: OK  index='${INDEX_NAME}'  docs=${s.numberOfDocuments}  indexing=${s.isIndexing}`,
-        );
-      } catch {
-        console.log(
-          `meilisearch: OK  index='${INDEX_NAME}' not built yet (run: npm run search -- reindex)`,
-        );
+      let total = 0;
+      let built = 0;
+      for (const lang of LAUNCH_LANGS) {
+        const uid = indexNameForLang(lang);
+        try {
+          const s = await client.stats(uid);
+          total += s.numberOfDocuments;
+          built += 1;
+          console.log(`  ${uid}: docs=${s.numberOfDocuments} indexing=${s.isIndexing}`);
+        } catch {
+          console.log(`  ${uid}: not built yet`);
+        }
       }
+      console.log(
+        built === 0
+          ? `meilisearch: OK  no '${INDEX_PREFIX}_*' indexes built yet (run: npm run search -- reindex)`
+          : `meilisearch: OK  ${built}/${LAUNCH_LANGS.length} indexes built, ${total} docs total`,
+      );
       break;
     }
     case 'clear': {
-      const t = await client.deleteIndex(INDEX_NAME);
-      if (t) await client.waitForTask(t.taskUid);
-      console.log(`index '${INDEX_NAME}' cleared`);
+      for (const lang of LAUNCH_LANGS) {
+        const uid = indexNameForLang(lang);
+        const t = await client.deleteIndex(uid);
+        if (t) await client.waitForTask(t.taskUid);
+        console.log(`index '${uid}' cleared`);
+      }
       break;
     }
     case 'search': {
