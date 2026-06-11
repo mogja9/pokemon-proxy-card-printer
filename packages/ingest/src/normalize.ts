@@ -6,14 +6,19 @@
 
 /**
  * Normalize a printed collector number to the language-agnostic natural key.
- * trim -> lowercase -> remove spaces -> strip ONLY leading / after-separator
- * zero-runs before a digit. Interior zeros are kept ('100' stays '100').
+ * lowercase -> remove spaces -> strip ONLY leading / after-separator zero-runs
+ * before a digit. Interior zeros are kept ('100' stays '100').
  *
  *   '001' -> '1'   'TG 12' -> 'tg12'   'GG01' -> 'gg1'
  *   'SV-P-001' -> 'sv-p-1'   '100' -> '100'   '010' -> '10'
+ *
+ * NOTE: this does NOT JS-.trim() the input. The SQL trigger uses btrim (ASCII
+ * space only) + replace(' ',''), so it removes spaces but KEEPS edge tabs/
+ * newlines/NBSP. `.trim()` would strip those, diverging from the stored key on
+ * such inputs. Removing spaces here matches SQL exactly (byte-for-byte).
  */
 export function normalizeCollectorNumber(raw: string): string {
-  let s = raw.trim().toLowerCase();
+  let s = raw.toLowerCase();
   s = s.replace(/ /g, '');
   s = s.replace(/(^|[^0-9])0+([0-9])/g, '$1$2');
   return s;
