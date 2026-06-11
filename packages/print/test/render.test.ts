@@ -73,3 +73,26 @@ test('renderMpcZip: valid zip with order.xml + front PNG', async () => {
   assert.ok(xml.includes('<quantity>2</quantity>'));
   assert.ok(xml.includes('<slots>0,1</slots>'));
 });
+
+test('renderHomePdf: N-up spans multiple pages for >9 cards', async () => {
+  const buf = await testCardImage();
+  // a single item whose quantity exceeds one 3x3 sheet
+  const r10 = await renderHomePdf([{ image: buf, quantity: 10, label: 'x' }], {
+    paper: 'A4',
+    dpi: 300,
+  });
+  assert.equal(r10.cards, 10);
+  assert.equal(r10.pages, 2); // ceil(10 / 9)
+
+  // multiple items whose quantities accumulate across the page boundary
+  const r19 = await renderHomePdf(
+    [
+      { image: buf, quantity: 9 },
+      { image: buf, quantity: 10 },
+    ],
+    { paper: 'A4', dpi: 300 },
+  );
+  assert.equal(r19.cards, 19);
+  assert.equal(r19.pages, 3); // ceil(19 / 9)
+  assert.equal(strFromU8(r19.pdf.slice(0, 5)), '%PDF-');
+});
