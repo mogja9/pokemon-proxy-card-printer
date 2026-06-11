@@ -50,13 +50,27 @@ export function localIdToPtcgNum(localId: string): string {
 }
 
 /**
- * canonical (TCGdex padded) set id -> malie/TCGL set id. TCGL uses the same
- * unpadded SV/Mega-era ids as pokemontcg.io ('sv03' -> 'sv3'). Older sets and
- * promos may need a lookup table later; an unmapped id simply 404s and the
- * pipeline falls through to the next candidate.
+ * Explicit canonical (TCGdex) -> malie/TCGL set-id overrides where no rule
+ * derives the mapping. Verified 2026-06-11 against the live TCGdex /sets and the
+ * malie manifest. (svalt/mealt/sve/mee/rsv10-5/zsv10-5 are malie-specific
+ * groupings still pending a live cross-check - see docs/OPEN_ITEMS.md.)
+ */
+const MALIE_SET_OVERRIDES: Record<string, string> = {
+  svp: 'svbsp', // SV Black Star Promos
+  mep: 'mebsp', // ME Black Star Promos
+};
+
+/**
+ * canonical (TCGdex padded) set id -> malie/TCGL set id. TCGL unpads SV/Mega-era
+ * ids ('sv03' -> 'sv3') and writes half-sets with a hyphen ('sv03.5' -> 'sv3-5');
+ * a few promo sets need an explicit override. An unmapped id resolves 'absent'
+ * in the manifest and the pipeline falls through to TCGdex.
  */
 export function canonicalToMalieSetId(setId: string): string {
-  return canonicalToPtcgSetId(setId);
+  const override = MALIE_SET_OVERRIDES[setId.toLowerCase()];
+  if (override) return override;
+  // 'sv03.5' -> unpad 'sv3.5' -> malie hyphen form 'sv3-5'
+  return canonicalToPtcgSetId(setId).replace(/\.5$/, '-5');
 }
 
 /** printed number -> malie's 3-digit zero-padded form (pure numerics only). */

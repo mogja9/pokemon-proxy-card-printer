@@ -30,6 +30,19 @@ test('canonicalToMalieSetId: unpads SV/Mega era like TCGL ids', () => {
   assert.equal(canonicalToMalieSetId('me04'), 'me4');
 });
 
+test('canonicalToMalieSetId: half-sets use the malie hyphen form (151, Prismatic, ...)', () => {
+  assert.equal(canonicalToMalieSetId('sv03.5'), 'sv3-5'); // 151
+  assert.equal(canonicalToMalieSetId('sv04.5'), 'sv4-5'); // Paldean Fates
+  assert.equal(canonicalToMalieSetId('sv06.5'), 'sv6-5'); // Shrouded Fable
+  assert.equal(canonicalToMalieSetId('sv08.5'), 'sv8-5'); // Prismatic Evolutions
+  assert.equal(canonicalToMalieSetId('me02.5'), 'me2-5');
+});
+
+test('canonicalToMalieSetId: promo-set overrides', () => {
+  assert.equal(canonicalToMalieSetId('svp'), 'svbsp');
+  assert.equal(canonicalToMalieSetId('mep'), 'mebsp');
+});
+
 test('localIdToMalieNum: 3-digit zero-pad for pure numerics only', () => {
   assert.equal(localIdToMalieNum('4'), '004');
   assert.equal(localIdToMalieNum('004'), '004');
