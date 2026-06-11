@@ -1,39 +1,9 @@
 import type { NextRequest } from 'next/server';
-import { readFile } from 'node:fs/promises';
-import { join, resolve } from 'node:path';
-import { renderHomePdf, renderMpcZip, type PrintItem } from '@proxyforge/print';
+import { renderHomePdf, renderMpcZip, loadPrintImageBytes, type PrintItem } from '@proxyforge/print';
 import { query } from '@proxyforge/db';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
-
-function imagesBase(): string {
-  return process.env.IMAGES_DIR ? resolve(process.env.IMAGES_DIR) : resolve(process.cwd(), 'data/images');
-}
-
-async function loadBytes(storageKey: string | null, remoteUrl: string | null): Promise<Buffer | null> {
-  if (storageKey) {
-    const base = imagesBase();
-    const path = join(base, storageKey);
-    if (path.startsWith(base) && !storageKey.includes('..')) {
-      try {
-        return await readFile(path);
-      } catch {
-        /* fall through to remote */
-      }
-    }
-  }
-  if (remoteUrl) {
-    try {
-      const r = await fetch(remoteUrl, { headers: { 'user-agent': 'ProxyForge/0.1 (+render)' } });
-      if (r.ok) return Buffer.from(await r.arrayBuffer());
-    } catch {
-      // network-level failure (DNS, refused, source down): treat as missing
-      // rather than 500-ing the whole render request.
-    }
-  }
-  return null;
-}
 
 export async function POST(req: NextRequest): Promise<Response> {
   let body: {
@@ -71,7 +41,7 @@ export async function POST(req: NextRequest): Promise<Response> {
     );
     const row = res.rows[0];
     if (!row) continue;
-    const buf = await loadBytes(row.storage_key, row.remote_url);
+    const buf = await loadPrintImageBytes(row.storage_key, row.remote_url);
     if (!buf) continue;
     printItems.push({
       image: buf,
