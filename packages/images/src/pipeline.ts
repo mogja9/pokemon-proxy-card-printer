@@ -73,7 +73,8 @@ async function selectPending(langs: Lang[] | undefined, limit: number): Promise<
   return rows;
 }
 
-async function upsertStored(args: {
+/** Upsert a fetched-and-stored image_variant. Exported for integration tests. */
+export async function upsertStored(args: {
   cardPrintId: string;
   lang: Lang;
   origin: string;
