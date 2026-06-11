@@ -40,3 +40,13 @@ test('normalizeForeignSetId: Mega-era padding, not blind zero-pad', () => {
   assert.equal(normalizeForeignSetId('pokemontcg_io', 'swsh1'), 'swsh1'); // unchanged
   assert.equal(normalizeForeignSetId('pokemontcg_io', 'base1'), 'base1'); // unchanged
 });
+
+test('normalizeCollectorNumber: matches SQL btrim (spaces removed, edge tabs/newlines KEPT)', () => {
+  // spaces anywhere are removed (same as the old behavior, via replace)
+  assert.equal(normalizeCollectorNumber(' 001 '), '1');
+  assert.equal(normalizeCollectorNumber('TG 12'), 'tg12');
+  // SQL btrim is ASCII-space only, so edge tabs/newlines are NOT stripped;
+  // JS must keep them too or the JS key diverges from the stored DB key.
+  assert.equal(normalizeCollectorNumber('\t001'), '\t1');
+  assert.equal(normalizeCollectorNumber('001\n'), '1\n');
+});
