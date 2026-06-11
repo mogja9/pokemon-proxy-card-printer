@@ -8,14 +8,22 @@ import type { Lang } from '@proxyforge/config';
 import { query } from '@proxyforge/db';
 import { createStorage, type Storage } from './storage.js';
 import { resolveSources } from './sources.js';
+import { MalieManifest, applyMalieManifest, type MalieResolver } from './malie-manifest.js';
 import { fetchImageBytes, probeImage, sha256, dpiAtTrim } from './fetch.js';
 
 export interface ImagePipelineOptions {
   langs?: Lang[];
   limit?: number;
-  /** allow the pokemontcg.io EN hi-res CDN (~296 DPI). default true. */
+  /** allow third-party hi-res sources (malie.io + pokemontcg.io). default true. */
   enHires?: boolean;
   storage?: Storage;
+  /**
+   * Consult malie's manifest to skip malie for sets it lacks and use its
+   * authoritative URLs. Default true; set false (or inject a resolver) for
+   * offline/test runs that rely on the constructed-URL fallback only.
+   */
+  useMalieManifest?: boolean;
+  malieResolver?: MalieResolver;
 }
 
 export interface ImagePipelineStats {
@@ -117,6 +125,8 @@ export async function runImagePipeline(
 ): Promise<ImagePipelineStats> {
   const storage = opts.storage ?? createStorage();
   const limit = opts.limit ?? 500;
+  const malieResolver =
+    opts.malieResolver ?? (opts.useMalieManifest === false ? null : new MalieManifest());
   const pending = await selectPending(opts.langs, limit);
   const stats: ImagePipelineStats = {
     considered: pending.length,
@@ -127,13 +137,16 @@ export async function runImagePipeline(
   };
 
   for (const row of pending) {
-    const candidates = resolveSources({
+    let candidates = resolveSources({
       setId: row.set_id,
       localId: row.local_id,
       lang: row.lang,
       tcgdexImageBase: row.tcgdex_base,
       ...(opts.enHires !== undefined ? { enHires: opts.enHires } : {}),
     });
+    if (malieResolver) {
+      candidates = await applyMalieManifest(candidates, row.set_id, row.local_id, malieResolver);
+    }
     if (!candidates.length) {
       stats.skipped += 1;
       continue;

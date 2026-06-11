@@ -169,9 +169,12 @@ Meilisearch search backend with Postgres fallback.
 
 Still open (roughly in priority order):
 
-- [ ] **Image coverage.** Only cards with an image source are browseable; today
-      that is ~72% of prints (the read-model excludes imageless cards). Close the
-      gap with the two image sources below.
+- [~] **Image coverage.** Only cards with an image source are browseable; the
+      read-model excludes imageless cards. The malie.io source (below) is now
+      wired manifest-driven and raises the five Western langs (en/fr/de/it/es) to
+      296 DPI - but **only for the ~28 TCGL/SV+Mega-era sets malie carries**;
+      older sets stay on TCGdex ~242, and JA native is blocked (below). Use
+      `npm run images -- coverage` to measure the remaining gap.
 - [ ] **JA native ~350 DPI scraper** (pokemon-card.com) - **BLOCKED on attorney
       sign-off (assessed 2026-06-11).** pokemon-card.com is the rights-holder's own
       site and its footer explicitly prohibits image reproduction
