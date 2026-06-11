@@ -25,6 +25,7 @@ export interface CoverageRow {
   lang: string;
   eligible: number; // cards printed in this lang
   anyImage: number; // have a servable image (native or EN-fallback)
+  hires: number; // of anyImage, those at hi-res DPI (>=290: the 296/350 tier)
   native: number; // have a true localized scan in this lang
   enFallback: number; // servable only via EN-fallback art
   missing: number; // no servable image at all -> not browseable
@@ -39,7 +40,7 @@ WITH elig AS (
   WHERE NOT cp.is_digital_only AND NOT cp.is_suppressed
 ),
 img AS (
-  SELECT cd.card_print_id, cd.requested_lang AS lang, cd.has_localized_image
+  SELECT cd.card_print_id, cd.requested_lang AS lang, cd.has_localized_image, cd.dpi_at_trim
   FROM card_display cd
 )
 SELECT
@@ -47,6 +48,7 @@ SELECT
   e.lang                                                            AS lang,
   COUNT(*)                                                          AS eligible,
   COUNT(i.card_print_id)                                            AS "anyImage",
+  COUNT(*) FILTER (WHERE i.dpi_at_trim >= 290)                      AS hires,
   COUNT(*) FILTER (WHERE i.has_localized_image)                     AS native,
   COUNT(*) FILTER (WHERE i.card_print_id IS NOT NULL
                      AND NOT i.has_localized_image)                 AS "enFallback",
@@ -67,6 +69,7 @@ export async function getCoverage(langs?: Lang[]): Promise<CoverageRow[]> {
     lang: String(r.lang),
     eligible: Number(r.eligible),
     anyImage: Number(r.anyImage),
+    hires: Number(r.hires),
     native: Number(r.native),
     enFallback: Number(r.enFallback),
     missing: Number(r.missing),
@@ -87,11 +90,12 @@ export function sumRows(label: string, lang: string, rows: CoverageRow[]): Cover
       lang,
       eligible: acc.eligible + r.eligible,
       anyImage: acc.anyImage + r.anyImage,
+      hires: acc.hires + r.hires,
       native: acc.native + r.native,
       enFallback: acc.enFallback + r.enFallback,
       missing: acc.missing + r.missing,
     }),
-    { setId: label, lang, eligible: 0, anyImage: 0, native: 0, enFallback: 0, missing: 0 },
+    { setId: label, lang, eligible: 0, anyImage: 0, hires: 0, native: 0, enFallback: 0, missing: 0 },
   );
 }
 
@@ -110,12 +114,13 @@ export function rollupByLang(rows: CoverageRow[]): CoverageRow[] {
 
 /** Render rows as a fixed-width table (pure; used by the CLI). */
 export function formatCoverageTable(rows: CoverageRow[]): string {
-  const header = ['set', 'lang', 'eligible', 'image', 'native', 'en-fb', 'missing', 'cov%'];
+  const header = ['set', 'lang', 'eligible', 'image', 'hi-res', 'native', 'en-fb', 'missing', 'cov%'];
   const body = rows.map((r) => [
     r.setId,
     r.lang,
     String(r.eligible),
     String(r.anyImage),
+    String(r.hires),
     String(r.native),
     String(r.enFallback),
     String(r.missing),

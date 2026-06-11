@@ -13,6 +13,7 @@ const row = (p: Partial<CoverageRow>): CoverageRow => ({
   lang: 'en',
   eligible: 0,
   anyImage: 0,
+  hires: 0,
   native: 0,
   enFallback: 0,
   missing: 0,
@@ -25,16 +26,17 @@ test('coveragePct: any-image over eligible, one decimal', () => {
   assert.equal(coveragePct({ eligible: 0, anyImage: 0 }), 0); // no divide-by-zero
 });
 
-test('sumRows: aggregates every count and relabels set', () => {
+test('sumRows: aggregates every count (incl. hires) and relabels set', () => {
   const out = sumRows('(all sets)', 'en', [
-    row({ setId: 'sv1', eligible: 10, anyImage: 8, native: 7, enFallback: 1, missing: 2 }),
-    row({ setId: 'sv2', eligible: 5, anyImage: 5, native: 5, enFallback: 0, missing: 0 }),
+    row({ setId: 'sv1', eligible: 10, anyImage: 8, hires: 6, native: 7, enFallback: 1, missing: 2 }),
+    row({ setId: 'sv2', eligible: 5, anyImage: 5, hires: 5, native: 5, enFallback: 0, missing: 0 }),
   ]);
   assert.deepEqual(out, {
     setId: '(all sets)',
     lang: 'en',
     eligible: 15,
     anyImage: 13,
+    hires: 11,
     native: 12,
     enFallback: 1,
     missing: 2,
@@ -56,13 +58,13 @@ test('rollupByLang: one total per language, lang-sorted', () => {
   assert.equal(coveragePct(ja), 50);
 });
 
-test('formatCoverageTable: header + aligned columns, cov% rendered', () => {
+test('formatCoverageTable: header + aligned columns, hi-res + cov% rendered', () => {
   const out = formatCoverageTable([
-    row({ setId: 'sv1', lang: 'en', eligible: 200, anyImage: 200, native: 200 }),
-    row({ setId: 'sv1', lang: 'ja', eligible: 200, anyImage: 144, native: 100, enFallback: 44, missing: 56 }),
+    row({ setId: 'sv1', lang: 'en', eligible: 200, anyImage: 200, hires: 200, native: 200 }),
+    row({ setId: 'sv1', lang: 'ja', eligible: 200, anyImage: 144, hires: 30, native: 100, enFallback: 44, missing: 56 }),
   ]);
   const lines = out.split('\n');
-  assert.match(lines[0]!, /set\s+lang\s+eligible\s+image\s+native\s+en-fb\s+missing\s+cov%/);
+  assert.match(lines[0]!, /set\s+lang\s+eligible\s+image\s+hi-res\s+native\s+en-fb\s+missing\s+cov%/);
   assert.match(out, /100\.0%/);
   assert.match(out, /72\.0%/);
   // every data line shares the column count of the header
