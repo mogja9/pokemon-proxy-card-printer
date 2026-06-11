@@ -64,3 +64,13 @@ test('assertSafeComplianceDefaults: rejects unsafe overrides', () => {
   assert.equal(bad.pricingEnabled, true); // envBool parsed the injected env
   assert.throws(() => assertSafeComplianceDefaults(bad), /Unsafe compliance defaults/);
 });
+
+test('trademarkedTermsBanned matches the brand-lint enforcer set (no drift)', () => {
+  // Mirror of scripts/brand-lint.mjs BANNED; both must list the same terms so
+  // the documented posture does not understate what CI actually enforces.
+  const c = loadCompliance(env({}));
+  assert.deepEqual(
+    [...c.trademarkedTermsBanned].sort(),
+    ['gamefreak', 'nintendo', 'poke-ball', 'pokeball', 'poké', 'pokemon', 'pokémon'].sort(),
+  );
+});

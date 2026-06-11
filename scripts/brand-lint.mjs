@@ -11,6 +11,7 @@ import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+// Keep in sync with @proxyforge/config trademarkedTermsBanned (loadCompliance).
 const BANNED = ['pokemon', 'pokémon', 'poké', 'pokeball', 'poke-ball', 'nintendo', 'gamefreak'];
 
 const problems = [];
