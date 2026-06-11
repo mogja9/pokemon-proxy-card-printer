@@ -34,7 +34,9 @@ export default function PrintPage() {
   const [copied, setCopied] = useState(false);
 
   const total = items.reduce((n, x) => n + x.qty, 0);
-  const sheets = Math.ceil(total / 9);
+  const sheets = Math.ceil(total / 9); // 3x3 N-up
+  // renderHomePdf switches Letter+bleed to A4, so label the paper actually used.
+  const renderPaper = bleed && paper === 'letter' ? 'A4' : paper === 'letter' ? 'Letter' : 'A4';
   // MPC accepts at most MPC_MAX_ORDER cards per order; warn before generating.
   const mpcOverCapacity = target === 'mpc' && total > MPC_MAX_ORDER;
   // a name-based decklist of the current list (re-importable; round-trips with Import)
@@ -180,7 +182,8 @@ export default function PrintPage() {
       ) : (
         <>
       <p style={{ color: 'var(--muted)' }}>
-        {total} card{total === 1 ? '' : 's'} · ~{sheets} A4 sheet{sheets === 1 ? '' : 's'} (3x3)
+        {total} card{total === 1 ? '' : 's'} · ~{sheets} {renderPaper} sheet
+        {sheets === 1 ? '' : 's'} (3x3)
       </p>
       <table className="cart">
         <thead>
@@ -260,7 +263,15 @@ export default function PrintPage() {
         <button className="primary" disabled={busy} onClick={generate}>
           {busy ? 'Generating...' : 'Generate'}
         </button>
-        <button className="ghost" onClick={clear}>Clear list</button>
+        <button
+          className="ghost"
+          onClick={() => {
+            if (window.confirm(`Clear all ${total} card${total === 1 ? '' : 's'} from the print list?`))
+              clear();
+          }}
+        >
+          Clear list
+        </button>
       </div>
       {mpcOverCapacity && (
         <p style={{ color: '#e8c06a' }}>
