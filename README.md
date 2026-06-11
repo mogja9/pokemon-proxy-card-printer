@@ -171,9 +171,14 @@ Still open (roughly in priority order):
 - [ ] **JA native ~350 DPI scraper** (pokemon-card.com) - the only native >300
       DPI Japanese source. Fragile (per-card detail-page scraping); needs a
       circuit breaker + filename cache + EN fallback.
-- [ ] **malie.io EN hi-res path** - load-bearing for the $0 English hi-res route
-      since pokemontcg.io merged into paid Scrydex; availability and terms still
-      unverified.
+- [x] **malie.io EN hi-res path - VERIFIED LIVE (2026-06-11).** Confirmed the $0
+      replacement for the paywalled pokemontcg.io route: deterministic manifest
+      (`cdn.malie.io/.../tcgl/export/index.json`) -> per-set image URLs, measured
+      at exactly **296 DPI** (733x1024px), no per-card scraping. Covers all six
+      Western langs (en/fr/de/it/es/pt) and **upgrades fr/de/it/es/pt from TCGdex
+      ~242 to 296**. No formal license (rides the attorney gate); needs ID mapping
+      + polite fetch. **Next: build a `malie` ImageOrigin adapter** (see below).
+      No ja/ko/zh - the JA scraper is still the native-JA path.
 - [ ] **Production serve plane** - SeaweedFS object storage + imgproxy
       derivatives (today images are local-FS only).
 - [ ] **Search refinement** - the index is currently a single Meili index with a

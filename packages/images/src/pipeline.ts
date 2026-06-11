@@ -162,7 +162,9 @@ export async function runImagePipeline(
           qualityRank: cand.qualityRank,
         });
         stats.stored += 1;
-        if (cand.origin === 'pokemontcg_io') stats.upgradedToHires += 1;
+        if (cand.origin === 'pokemontcg_io' || cand.origin === 'malie_io') {
+          stats.upgradedToHires += 1;
+        }
         done = true;
         if (cand.lang === row.lang) break; // got the requested-lang image
       } catch (err) {
