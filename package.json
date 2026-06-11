@@ -28,6 +28,7 @@
     "check": "npm run typecheck && npm run test && npm run brand-lint && npm run gpl-check"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.2",
     "@types/node": "^22.10.0",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2"

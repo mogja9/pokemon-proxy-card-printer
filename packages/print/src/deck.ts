@@ -77,6 +77,27 @@ export interface DeckResolution {
 /** Cap on entries resolved per request (a deck is 60; allow slack for sideboards). */
 export const MAX_DECK_ENTRIES = 200;
 
+/** $1 = set code (ptcg_code), $2 = printed number. */
+export const DECK_BY_SETCODE_SQL = `
+  SELECT cp.slug
+  FROM card_print cp
+  JOIN card_set cs ON cs.id = cp.card_set_id
+  WHERE lower(cs.ptcg_code) = lower($1)
+    AND cp.collector_number_norm = normalize_collector_number($2)
+    AND NOT cp.is_suppressed
+  ORDER BY cp.id
+  LIMIT 1`;
+
+/** $1 = card name, $2 = requested lang (matched there or in EN). */
+export const DECK_BY_NAME_SQL = `
+  SELECT cp.slug
+  FROM card_print cp
+  JOIN card_localization cl ON cl.card_print_id = cp.id AND cl.lang IN ($2, 'en')
+  JOIN card_set cs ON cs.id = cp.card_set_id
+  WHERE lower(cl.name) = lower($1) AND NOT cp.is_suppressed
+  ORDER BY (cl.lang = $2) DESC, cs.release_date DESC NULLS LAST, cs.set_id
+  LIMIT 1`;
+
 /**
  * Resolve a decklist to card_print slugs. (setCode, number) is tried first via
  * card_set.ptcg_code + normalize_collector_number; otherwise a name match in the
@@ -92,31 +113,12 @@ export async function resolveDeckList(text: string, lang: Lang): Promise<DeckRes
     let slug: string | null = null;
 
     if (e.setCode && e.number) {
-      const r = await query<{ slug: string }>(
-        `SELECT cp.slug
-         FROM card_print cp
-         JOIN card_set cs ON cs.id = cp.card_set_id
-         WHERE lower(cs.ptcg_code) = lower($1)
-           AND cp.collector_number_norm = normalize_collector_number($2)
-           AND NOT cp.is_suppressed
-         ORDER BY cp.id
-         LIMIT 1`,
-        [e.setCode, e.number],
-      );
+      const r = await query<{ slug: string }>(DECK_BY_SETCODE_SQL, [e.setCode, e.number]);
       slug = r.rows[0]?.slug ?? null;
     }
 
     if (!slug) {
-      const r = await query<{ slug: string }>(
-        `SELECT cp.slug
-         FROM card_print cp
-         JOIN card_localization cl ON cl.card_print_id = cp.id AND cl.lang IN ($2, 'en')
-         JOIN card_set cs ON cs.id = cp.card_set_id
-         WHERE lower(cl.name) = lower($1) AND NOT cp.is_suppressed
-         ORDER BY (cl.lang = $2) DESC, cs.release_date DESC NULLS LAST, cs.set_id
-         LIMIT 1`,
-        [e.name, lang],
-      );
+      const r = await query<{ slug: string }>(DECK_BY_NAME_SQL, [e.name, lang]);
       slug = r.rows[0]?.slug ?? null;
     }
 
