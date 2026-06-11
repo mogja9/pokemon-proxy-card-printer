@@ -7,14 +7,22 @@
 const BROWSER_UA =
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36';
 
+/** Injectable clock so the limiter's timing can be unit-tested deterministically. */
+export interface RateLimiterClock {
+  now: () => number;
+  sleep: (ms: number) => Promise<void>;
+}
+
 /** Serialize calls to at most `rps` per second (min-interval gate). */
 export class RateLimiter {
   private readonly minIntervalMs: number;
   private chain: Promise<void> = Promise.resolve();
   private last = 0;
+  private readonly clock: RateLimiterClock;
 
-  constructor(rps: number) {
+  constructor(rps: number, clock?: RateLimiterClock) {
     this.minIntervalMs = rps > 0 ? 1000 / rps : 0;
+    this.clock = clock ?? { now: () => Date.now(), sleep };
   }
 
   /** Resolve after enough time has passed since the previous slot. */
@@ -23,9 +31,9 @@ export class RateLimiter {
     let release!: () => void;
     this.chain = new Promise<void>((r) => (release = r));
     await prev;
-    const wait = this.last + this.minIntervalMs - Date.now();
-    if (wait > 0) await sleep(wait);
-    this.last = Date.now();
+    const wait = this.last + this.minIntervalMs - this.clock.now();
+    if (wait > 0) await this.clock.sleep(wait);
+    this.last = this.clock.now();
     release();
   }
 }
