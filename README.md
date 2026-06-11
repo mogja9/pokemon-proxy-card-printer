@@ -172,9 +172,13 @@ Still open (roughly in priority order):
 - [ ] **Image coverage.** Only cards with an image source are browseable; today
       that is ~72% of prints (the read-model excludes imageless cards). Close the
       gap with the two image sources below.
-- [ ] **JA native ~350 DPI scraper** (pokemon-card.com) - the only native >300
-      DPI Japanese source. Fragile (per-card detail-page scraping); needs a
-      circuit breaker + filename cache + EN fallback.
+- [ ] **JA native ~350 DPI scraper** (pokemon-card.com) - **BLOCKED on attorney
+      sign-off (assessed 2026-06-11).** pokemon-card.com is the rights-holder's own
+      site and its footer explicitly prohibits image reproduction
+      ("無断転載はお断りします"), making this the project's highest legal exposure -
+      do not build until explicitly cleared. Interim JA path stays TCGdex ~242
+      (malie has no JA). If cleared: per-card scraping + circuit breaker +
+      filename cache + EN fallback. See `docs/OPEN_ITEMS.md`.
 - [x] **malie.io EN hi-res path - VERIFIED LIVE (2026-06-11).** Confirmed the $0
       replacement for the paywalled pokemontcg.io route: deterministic manifest
       (`cdn.malie.io/.../tcgl/export/index.json`) -> per-set image URLs, measured
