@@ -23,6 +23,13 @@ function pickSort(v: string | undefined): BrowseSort {
   return SORTS.some((s) => s.value === v) ? (v as BrowseSort) : 'newest';
 }
 
+const PAGE_SIZES = [24, 48, 96] as const;
+const DEFAULT_PAGE_SIZE = 48;
+function pickPageSize(v: string | undefined): number {
+  const n = Number(v);
+  return (PAGE_SIZES as readonly number[]).includes(n) ? n : DEFAULT_PAGE_SIZE;
+}
+
 export default async function Browse({ searchParams }: { searchParams: Promise<SP> }) {
   const sp = await searchParams;
   const lang = pickLang(str(sp.lang));
@@ -31,12 +38,13 @@ export default async function Browse({ searchParams }: { searchParams: Promise<S
   const supertype = str(sp.supertype);
   const promoOnly = str(sp.promo) === '1';
   const sort = pickSort(str(sp.sort));
+  const pageSize = pickPageSize(str(sp.size));
   const page = Math.max(1, Number(str(sp.page) ?? '1') || 1);
 
   let res, sets, types, err: string | null = null;
   try {
     [res, sets, types] = await Promise.all([
-      searchCards({ lang, ...(q ? { q } : {}), ...(set ? { set } : {}), ...(supertype ? { supertype } : {}), promoOnly, sort, page }),
+      searchCards({ lang, ...(q ? { q } : {}), ...(set ? { set } : {}), ...(supertype ? { supertype } : {}), promoOnly, sort, page, pageSize }),
       listSets(),
       listSupertypes(),
     ]);
@@ -53,6 +61,7 @@ export default async function Browse({ searchParams }: { searchParams: Promise<S
     if (supertype) p.set('supertype', supertype);
     if (promoOnly) p.set('promo', '1');
     if (sort !== 'newest') p.set('sort', sort);
+    if (pageSize !== DEFAULT_PAGE_SIZE) p.set('size', String(pageSize));
     for (const [k, v] of Object.entries(over)) v ? p.set(k, v) : p.delete(k);
     return `/?${p.toString()}`;
   };
@@ -82,6 +91,11 @@ export default async function Browse({ searchParams }: { searchParams: Promise<S
         <label>Sort
           <select name="sort" defaultValue={sort}>
             {SORTS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
+          </select>
+        </label>
+        <label>Per page
+          <select name="size" defaultValue={String(pageSize)}>
+            {PAGE_SIZES.map((s) => <option key={s} value={s}>{s}</option>)}
           </select>
         </label>
         <button type="submit">Filter</button>
