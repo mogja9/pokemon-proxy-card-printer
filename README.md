@@ -113,6 +113,13 @@ and a one-click render to home PDF or MakePlayingCards ZIP (with paper, DPI,
 gutter, and bleed options). Search is served by Meilisearch with the Postgres
 fallback described above.
 
+**Decklist import.** Paste a Pokémon TCG Live / Limitless decklist
+(`<qty> <name> [<setCode> <number>]`, e.g. `4 Pikachu SVI 94`; Trainer/Energy
+lines can be name-only) on the print page and the whole list is resolved into
+the print list in one step - set code + number via `card_set.ptcg_code`, with a
+name fallback. Unmatched lines (e.g. PTCGL promo renumbering) are listed for
+manual fixup.
+
 ### Printing (Phase 4)
 
 ```bash
