@@ -15,8 +15,8 @@ competitive card size (63x88 mm). Non-commercial; donations only.
 > and the TCGdex data spine (Phase 1), the image pipeline (Phase 2: best
 > per-language sourcing + fetch-into-storage with honest measured DPI), the
 > browse/detail/print web UI (Phase 3), the dual-mode print engine (Phase 4:
-> home PDF + MakePlayingCards ZIP), and a Meilisearch index (typo-tolerant,
-> multilingual) with an automatic Postgres-FTS fallback. See
+> home PDF + MakePlayingCards ZIP), and per-language Meilisearch indexes
+> (typo-tolerant, multilingual) with an automatic Postgres-FTS fallback. See
 > `docs/ARCHITECTURE.md` for the full design and the
 > [Roadmap](#roadmap--what-still-needs-doing) below for what is left.
 
@@ -85,10 +85,12 @@ npm run images -- fetch --no-en-hires              # TCGdex-only
 ### Search (Meilisearch + Postgres fallback)
 
 The `card_display` materialized view is the read-model; `npm run search -- reindex`
-refreshes it and pushes every row into a Meilisearch index. With
-`SEARCH_BACKEND=meili` (the default) the web app gets typo-tolerant, multilingual
-ranking; if Meili is unreachable or the index is not built yet it transparently
-falls back to the Postgres FTS + `pg_bigm` query, so the site never hard-fails.
+refreshes it and routes every row into a **per-language Meilisearch index**
+(`cards_en … cards_zh-tw`), each with its own CJK-aware `localizedAttributes`.
+With `SEARCH_BACKEND=meili` (the default) the web app gets typo-tolerant,
+multilingual ranking; if Meili is unreachable or the indexes are not built yet it
+transparently falls back to the Postgres FTS + `pg_bigm` query, so the site never
+hard-fails.
 
 ```bash
 npm run search -- reindex                       # refresh MV + (re)index all docs
@@ -97,7 +99,7 @@ npm run search -- status                        # index health + document count
 npm run search -- search "charizard" --lang en  # debug a query from the CLI
 ```
 
-Re-run `reindex` after each ingest so the index tracks the catalog.
+Re-run `reindex` after each ingest so the indexes track the catalog.
 
 ### Web UI (Phase 3)
 
