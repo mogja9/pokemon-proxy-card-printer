@@ -24,6 +24,7 @@ export interface CardRow {
 }
 
 const BEST_IMAGE = `
+  -- best-image SYNC: keep WHERE+ORDER BY identical to card_display MV, print/resolve.ts, render route
   LEFT JOIN LATERAL (
     SELECT iv.storage_key, iv.remote_url, iv.dpi_at_trim, iv.lang
     FROM image_variant iv

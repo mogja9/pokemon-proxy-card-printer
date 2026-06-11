@@ -38,6 +38,7 @@ export async function resolvePrintList(printListId: string): Promise<ResolveResu
             best.storage_key
      FROM print_list_item pli
      JOIN card_print cp ON cp.id = pli.card_print_id
+     -- best-image SYNC: keep WHERE+ORDER BY identical to card_display MV, web/db.ts, render route
      LEFT JOIN LATERAL (
        SELECT iv.remote_url, iv.storage_key
        FROM image_variant iv

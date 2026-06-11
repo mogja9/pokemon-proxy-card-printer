@@ -27,6 +27,7 @@ export async function POST(req: NextRequest): Promise<Response> {
     const res = await query<{ storage_key: string | null; remote_url: string | null }>(
       `SELECT img.storage_key, img.remote_url
        FROM card_print cp
+       -- best-image SYNC: keep WHERE+ORDER BY identical to card_display MV, print/resolve.ts, web/db.ts
        LEFT JOIN LATERAL (
          SELECT iv.storage_key, iv.remote_url
          FROM image_variant iv
