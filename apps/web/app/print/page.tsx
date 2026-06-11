@@ -40,7 +40,30 @@ export default function PrintPage() {
   // MPC accepts at most MPC_MAX_ORDER cards per order; warn before generating.
   const mpcOverCapacity = target === 'mpc' && total > MPC_MAX_ORDER;
   // a name-based decklist of the current list (re-importable; round-trips with Import)
-  const exportText = items.map((i) => `${i.qty} ${i.name}`).join('\n');
+  const exportText = (() => {
+    // flat list if no card carries a supertype (e.g. an older list); else group
+    // by Pokemon/Trainer/Energy with section headers + counts, PTCGL-style.
+    if (!items.some((i) => i.supertype)) return items.map((i) => `${i.qty} ${i.name}`).join('\n');
+    const order = ['Pokémon', 'Trainer', 'Energy'];
+    const norm = (s?: string | null) => (s === 'Pokemon' ? 'Pokémon' : s || 'Other');
+    const groups = new Map<string, typeof items>();
+    for (const i of items) {
+      const k = norm(i.supertype);
+      if (!groups.has(k)) groups.set(k, []);
+      groups.get(k)!.push(i);
+    }
+    const keys = [
+      ...order.filter((k) => groups.has(k)),
+      ...[...groups.keys()].filter((k) => !order.includes(k)),
+    ];
+    return keys
+      .map((k) => {
+        const g = groups.get(k)!;
+        const count = g.reduce((n, x) => n + x.qty, 0);
+        return `${k}: ${count}\n${g.map((i) => `${i.qty} ${i.name}`).join('\n')}`;
+      })
+      .join('\n\n');
+  })();
 
   async function copyDeck() {
     try {
@@ -101,12 +124,12 @@ export default function PrintPage() {
       });
       if (!res.ok) throw new Error((await res.text()) || `import failed (${res.status})`);
       const data = (await res.json()) as {
-        resolved: { qty: number; name: string; slug: string; lang: string }[];
+        resolved: { qty: number; name: string; slug: string; lang: string; supertype: string | null }[];
         unresolved: Unresolved[];
       };
       addMany(
         data.resolved.map((r) => ({
-          item: { slug: r.slug, lang: r.lang, name: r.name, imageUrl: null },
+          item: { slug: r.slug, lang: r.lang, name: r.name, imageUrl: null, supertype: r.supertype },
           qty: r.qty,
         })),
       );

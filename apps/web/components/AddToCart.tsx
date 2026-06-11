@@ -7,6 +7,7 @@ export default function AddToCart(props: {
   lang: string;
   name: string;
   imageUrl: string | null;
+  supertype?: string | null;
 }) {
   const { add } = useCart();
   const [added, setAdded] = useState(0);
@@ -26,7 +27,13 @@ export default function AddToCart(props: {
         className="primary"
         onClick={() => {
           add(
-            { slug: props.slug, lang: props.lang, name: props.name, imageUrl: props.imageUrl },
+            {
+              slug: props.slug,
+              lang: props.lang,
+              name: props.name,
+              imageUrl: props.imageUrl,
+              supertype: props.supertype ?? null,
+            },
             qty,
           );
           setAdded(qty);

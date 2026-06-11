@@ -67,7 +67,13 @@ export default async function CardPage({
         </p>
 
         <div style={{ marginTop: 18 }}>
-          <AddToCart slug={card.slug} lang={lang} name={card.name} imageUrl={card.imageUrl} />
+          <AddToCart
+            slug={card.slug}
+            lang={lang}
+            name={card.name}
+            imageUrl={card.imageUrl}
+            supertype={card.supertype}
+          />
         </div>
 
         <p style={{ color: 'var(--muted)', fontSize: 12, marginTop: 18 }}>

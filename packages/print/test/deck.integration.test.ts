@@ -32,9 +32,9 @@ const FIXTURE = `
 INSERT INTO series (id,tcgdex_id,name_en) VALUES ('00000000-0000-0000-0000-000000000001','sv','S&V');
 INSERT INTO card_set (id,set_id,series_id,name_en,ptcg_code,release_date)
   VALUES ('00000000-0000-0000-0000-0000000000a1','sv01','00000000-0000-0000-0000-000000000001','S&V','SVI','2023-03-31');
-INSERT INTO card_print (id,card_set_id,collector_number_raw) VALUES
- ('00000000-0000-0000-0000-0000000000c1','00000000-0000-0000-0000-0000000000a1','094'),
- ('00000000-0000-0000-0000-0000000000c2','00000000-0000-0000-0000-0000000000a1','189');
+INSERT INTO card_print (id,card_set_id,collector_number_raw,supertype) VALUES
+ ('00000000-0000-0000-0000-0000000000c1','00000000-0000-0000-0000-0000000000a1','094','Pokemon'),
+ ('00000000-0000-0000-0000-0000000000c2','00000000-0000-0000-0000-0000000000a1','189','Trainer');
 INSERT INTO card_localization (card_print_id,lang,name) VALUES
  ('00000000-0000-0000-0000-0000000000c1','en','Pikachu'),
  ('00000000-0000-0000-0000-0000000000c2','en','Iono');
@@ -74,11 +74,11 @@ test('resolveDeckList(): real function - parse + batch + assemble, order/qty kep
     const res = await resolveDeckList(deck, 'en');
     // resolved keeps input order + qty; PIKACHU resolves via the name pass
     assert.deepEqual(
-      res.resolved.map((r) => [r.qty, r.slug]),
+      res.resolved.map((r) => [r.qty, r.slug, r.supertype]),
       [
-        [4, 'sv01-094'],
-        [2, 'sv01-189'],
-        [3, 'sv01-094'],
+        [4, 'sv01-094', 'Pokemon'], // resolved by set code + number
+        [2, 'sv01-189', 'Trainer'], // name fallback carries supertype too
+        [3, 'sv01-094', 'Pokemon'],
       ],
     );
     assert.equal(res.unresolved.length, 1);
