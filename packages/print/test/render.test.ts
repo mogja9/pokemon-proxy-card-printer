@@ -4,10 +4,17 @@ import { unzipSync, strFromU8 } from 'fflate';
 import { prepareCardImage } from '../src/prepare.js';
 import { renderHomePdf } from '../src/homepdf.js';
 import { renderMpcZip, mpcBracket } from '../src/mpc.js';
-import { fetchImageBuffer } from '../src/resolve.js';
 import { trimPx, mpcCanvasPx } from '../src/geometry.js';
+import sharp from 'sharp';
 
-const RUN = process.env.PPF_RUN_NET_TESTS === '1';
+/** A solid-colour PNG (~TCGdex source size) so the render tests need no network. */
+function testCardImage(): Promise<Buffer> {
+  return sharp({
+    create: { width: 600, height: 825, channels: 4, background: { r: 40, g: 120, b: 80, alpha: 1 } },
+  })
+    .png()
+    .toBuffer();
+}
 
 // pure (always runs)
 test('mpcBracket: smallest tier >= quantity', () => {
@@ -18,23 +25,20 @@ test('mpcBracket: smallest tier >= quantity', () => {
   assert.equal(mpcBracket(99999), 612);
 });
 
-// network-gated: fetch real TCGdex art and render
-const IMG = 'https://assets.tcgdex.net/en/sv/sv03/004/high.png';
-
-test('prepareCardImage: home-trim -> exact trim px', { skip: !RUN }, async () => {
-  const buf = await fetchImageBuffer(IMG);
+test('prepareCardImage: home-trim -> exact trim px', async () => {
+  const buf = await testCardImage();
   const p = await prepareCardImage(buf, { dpi: 300, mode: 'home-trim' });
   assert.deepEqual({ w: p.widthPx, h: p.heightPx }, trimPx(300));
 });
 
-test('prepareCardImage: mpc -> 822x1122 canvas', { skip: !RUN }, async () => {
-  const buf = await fetchImageBuffer(IMG);
+test('prepareCardImage: mpc -> 822x1122 canvas', async () => {
+  const buf = await testCardImage();
   const p = await prepareCardImage(buf, { dpi: 300, mode: 'mpc' });
   assert.deepEqual({ w: p.widthPx, h: p.heightPx }, mpcCanvasPx(300));
 });
 
-test('renderHomePdf: valid PDF, 1 page for <=9 cards', { skip: !RUN }, async () => {
-  const buf = await fetchImageBuffer(IMG);
+test('renderHomePdf: valid PDF, 1 page for <=9 cards', async () => {
+  const buf = await testCardImage();
   const res = await renderHomePdf([{ image: buf, quantity: 4, label: 'scyther' }], {
     paper: 'A4',
     dpi: 300,
@@ -46,8 +50,8 @@ test('renderHomePdf: valid PDF, 1 page for <=9 cards', { skip: !RUN }, async () 
   assert.ok(res.pdf.length > 5000);
 });
 
-test('renderHomePdf: Letter+bleed warns and switches to A4', { skip: !RUN }, async () => {
-  const buf = await fetchImageBuffer(IMG);
+test('renderHomePdf: Letter+bleed warns and switches to A4', async () => {
+  const buf = await testCardImage();
   const res = await renderHomePdf([{ image: buf, quantity: 1 }], {
     paper: 'letter',
     dpi: 300,
@@ -56,8 +60,8 @@ test('renderHomePdf: Letter+bleed warns and switches to A4', { skip: !RUN }, asy
   assert.ok(res.warnings.some((w) => /A4/.test(w)));
 });
 
-test('renderMpcZip: valid zip with order.xml + front PNG', { skip: !RUN }, async () => {
-  const buf = await fetchImageBuffer(IMG);
+test('renderMpcZip: valid zip with order.xml + front PNG', async () => {
+  const buf = await testCardImage();
   const res = await renderMpcZip([{ image: buf, quantity: 2, label: 'scyther' }], { dpi: 300 });
   assert.equal(res.totalCards, 2);
   assert.equal(res.bracket, 18);
