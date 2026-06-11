@@ -52,6 +52,13 @@ export default async function Browse({ searchParams }: { searchParams: Promise<S
     err = e instanceof Error ? e.message : String(e);
   }
 
+  // Any narrowing filter active (language is a preference, not a filter, so a
+  // clear keeps it). Drives the "Clear" link next to the Filter button.
+  const hasFilters = Boolean(
+    q || set || supertype || promoOnly || sort !== 'newest' || pageSize !== DEFAULT_PAGE_SIZE,
+  );
+  const clearHref = lang !== 'en' ? `/?lang=${lang}` : '/';
+
   const totalPages = res ? Math.max(1, Math.ceil(res.total / res.pageSize)) : 1;
   const qs = (over: Record<string, string>) => {
     const p = new URLSearchParams();
@@ -99,6 +106,7 @@ export default async function Browse({ searchParams }: { searchParams: Promise<S
           </select>
         </label>
         <button type="submit">Filter</button>
+        {hasFilters && <Link className="ghost" href={clearHref}>Clear</Link>}
       </form>
 
       {err && <p style={{ color: '#ff9a9a' }}>Database not reachable: {err}. Run the ingest first.</p>}
