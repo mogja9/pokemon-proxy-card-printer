@@ -126,8 +126,11 @@ manual fixup.
 **Decklist export.** "Export this list" on the print page emits a decklist
 (`<qty> <name>`) with a copy button, grouped into Pokémon / Trainer / Energy
 sections with counts (cards added by browsing or by Import carry their
-supertype). Save a list or move it between devices (the localStorage cart is
-per-browser); it round-trips back through Import.
+supertype). The print list header also shows a one-line breakdown by supertype
+(e.g. `12 Pokémon · 34 Trainer · 14 Energy`) when the list spans more than one.
+Save a list or move it between devices (the localStorage cart is per-browser);
+it round-trips back through Import. The grouping/summary/export logic lives in a
+pure, unit-tested `apps/web/lib/printlist.ts`.
 
 ### Printing (Phase 4)
 
