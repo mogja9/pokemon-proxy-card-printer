@@ -7,6 +7,7 @@ export interface CartItem {
   name: string;
   imageUrl: string | null;
   qty: number;
+  supertype?: string | null; // Pokemon | Trainer | Energy (for grouped export)
 }
 
 const KEY = 'pf.printlist.v1';

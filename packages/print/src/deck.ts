@@ -63,6 +63,7 @@ export interface ResolvedDeckItem {
   name: string;
   slug: string;
   lang: Lang;
+  supertype: string | null; // Pokemon | Trainer | Energy (for grouped export)
 }
 export interface UnresolvedDeckItem {
   qty: number;
@@ -86,10 +87,10 @@ export const MAX_DECK_ENTRIES = 200;
  * DECK_BY_SETCODE_BATCH_SQL: $1 = set codes[], $2 = numbers[] (parallel arrays).
  */
 export const DECK_BY_SETCODE_BATCH_SQL = `
-  SELECT v.idx, best.slug
+  SELECT v.idx, best.slug, best.supertype
   FROM unnest($1::text[], $2::text[]) WITH ORDINALITY AS v(set_code, num, idx)
   LEFT JOIN LATERAL (
-    SELECT cp.slug
+    SELECT cp.slug, cp.supertype
     FROM card_print cp
     JOIN card_set cs ON cs.id = cp.card_set_id
     WHERE lower(cs.ptcg_code) = lower(v.set_code)
@@ -102,10 +103,10 @@ export const DECK_BY_SETCODE_BATCH_SQL = `
 
 /** DECK_BY_NAME_BATCH_SQL: $1 = names[], $2 = requested lang (matched there or EN). */
 export const DECK_BY_NAME_BATCH_SQL = `
-  SELECT v.idx, best.slug
+  SELECT v.idx, best.slug, best.supertype
   FROM unnest($1::text[]) WITH ORDINALITY AS v(name, idx)
   LEFT JOIN LATERAL (
-    SELECT cp.slug
+    SELECT cp.slug, cp.supertype
     FROM card_print cp
     JOIN card_localization cl ON cl.card_print_id = cp.id AND cl.lang IN ($2, 'en')
     JOIN card_set cs ON cs.id = cp.card_set_id
@@ -124,6 +125,7 @@ export const DECK_BY_NAME_BATCH_SQL = `
 export async function resolveDeckList(text: string, lang: Lang): Promise<DeckResolution> {
   const entries = parseDeckList(text).slice(0, MAX_DECK_ENTRIES);
   const slugFor = new Array<string | null>(entries.length).fill(null);
+  const superFor = new Array<string | null>(entries.length).fill(null);
 
   // Pass 1 (one query): entries that carry a (setCode, number).
   const codeIdx: number[] = [];
@@ -137,11 +139,15 @@ export async function resolveDeckList(text: string, lang: Lang): Promise<DeckRes
     }
   });
   if (codeIdx.length) {
-    const r = await query<{ idx: number; slug: string | null }>(DECK_BY_SETCODE_BATCH_SQL, [
-      codes,
-      nums,
-    ]);
-    for (const row of r.rows) slugFor[codeIdx[Number(row.idx) - 1]!] = row.slug ?? null;
+    const r = await query<{ idx: number; slug: string | null; supertype: string | null }>(
+      DECK_BY_SETCODE_BATCH_SQL,
+      [codes, nums],
+    );
+    for (const row of r.rows) {
+      const i = codeIdx[Number(row.idx) - 1]!;
+      slugFor[i] = row.slug ?? null;
+      superFor[i] = row.supertype ?? null;
+    }
   }
 
   // Pass 2 (one query): everything still unresolved, by name (Trainer/Energy,
@@ -155,11 +161,15 @@ export async function resolveDeckList(text: string, lang: Lang): Promise<DeckRes
     }
   });
   if (nameIdx.length) {
-    const r = await query<{ idx: number; slug: string | null }>(DECK_BY_NAME_BATCH_SQL, [
-      names,
-      lang,
-    ]);
-    for (const row of r.rows) slugFor[nameIdx[Number(row.idx) - 1]!] = row.slug ?? null;
+    const r = await query<{ idx: number; slug: string | null; supertype: string | null }>(
+      DECK_BY_NAME_BATCH_SQL,
+      [names, lang],
+    );
+    for (const row of r.rows) {
+      const i = nameIdx[Number(row.idx) - 1]!;
+      slugFor[i] = row.slug ?? null;
+      superFor[i] = row.supertype ?? null;
+    }
   }
 
   const resolved: ResolvedDeckItem[] = [];
@@ -167,7 +177,7 @@ export async function resolveDeckList(text: string, lang: Lang): Promise<DeckRes
   entries.forEach((e, i) => {
     const slug = slugFor[i];
     if (slug) {
-      resolved.push({ qty: e.qty, name: e.name, slug, lang });
+      resolved.push({ qty: e.qty, name: e.name, slug, lang, supertype: superFor[i] ?? null });
     } else {
       unresolved.push({
         qty: e.qty,
