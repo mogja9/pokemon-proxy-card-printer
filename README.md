@@ -51,7 +51,7 @@ npm install
 
 # offline checks (no DB, no network)
 npm run typecheck
-npm test                      # pure-logic unit tests
+npm test                      # unit + in-process-Postgres (PGlite) integration tests; see docs/TESTING.md
 npm run brand-lint && npm run gpl-check
 
 # bring up Postgres + Meilisearch (builds the pg_bigm image the first time)
