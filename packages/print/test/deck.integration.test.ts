@@ -13,7 +13,7 @@ import { PGlite } from '@electric-sql/pglite';
 import { pg_trgm } from '@electric-sql/pglite/contrib/pg_trgm';
 import { citext } from '@electric-sql/pglite/contrib/citext';
 import { pgcrypto } from '@electric-sql/pglite/contrib/pgcrypto';
-import { DECK_BY_SETCODE_SQL, DECK_BY_NAME_SQL } from '../src/deck.js';
+import { DECK_BY_SETCODE_BATCH_SQL, DECK_BY_NAME_BATCH_SQL } from '../src/deck.js';
 
 const SCHEMA_PATH = resolve(dirname(fileURLToPath(import.meta.url)), '../../../db/schema.sql');
 
@@ -39,27 +39,40 @@ INSERT INTO card_localization (card_print_id,lang,name) VALUES
  ('00000000-0000-0000-0000-0000000000c2','en','Iono');
 `;
 
-test('deck resolution: set code + number -> slug (zero-padding agnostic)', async () => {
+test('batched set-code resolution: zero-pad + case agnostic, NULL for misses, order kept', async () => {
   const db = await freshDb();
   await db.exec(FIXTURE);
-  // decklist says "SVI 94"; stored raw is "094" -> both normalize to "94"
-  const r = await db.query<{ slug: string }>(DECK_BY_SETCODE_SQL, ['SVI', '94']);
-  assert.equal(r.rows[0]?.slug, 'sv01-094');
-  // lowercase set code in the list still matches (lower() on both sides)
-  const r2 = await db.query<{ slug: string }>(DECK_BY_SETCODE_SQL, ['svi', '189']);
-  assert.equal(r2.rows[0]?.slug, 'sv01-189');
-  // a number that does not exist -> no row
-  const none = await db.query<{ slug: string }>(DECK_BY_SETCODE_SQL, ['SVI', '999']);
-  assert.equal(none.rows.length, 0);
+  // decklist "94" matches stored "094" (both normalize to "94"); "svi" matches
+  // SVI (lower on both sides); "999" has no card -> NULL, in input order.
+  const r = await db.query<{ idx: number; slug: string | null }>(DECK_BY_SETCODE_BATCH_SQL, [
+    ['SVI', 'svi', 'SVI'],
+    ['94', '189', '999'],
+  ]);
+  assert.deepEqual(
+    r.rows.map((x) => [Number(x.idx), x.slug]),
+    [
+      [1, 'sv01-094'],
+      [2, 'sv01-189'],
+      [3, null],
+    ],
+  );
   await db.close();
 });
 
-test('deck resolution: name fallback (case-insensitive) for Trainer/Energy lines', async () => {
+test('batched name fallback: case-insensitive, NULL for misses, one query for many', async () => {
   const db = await freshDb();
   await db.exec(FIXTURE);
-  const r = await db.query<{ slug: string }>(DECK_BY_NAME_SQL, ['iono', 'en']);
-  assert.equal(r.rows[0]?.slug, 'sv01-189');
-  const none = await db.query<{ slug: string }>(DECK_BY_NAME_SQL, ['Nonexistent Card', 'en']);
-  assert.equal(none.rows.length, 0);
+  const r = await db.query<{ idx: number; slug: string | null }>(DECK_BY_NAME_BATCH_SQL, [
+    ['iono', 'Nonexistent Card', 'PIKACHU'],
+    'en',
+  ]);
+  assert.deepEqual(
+    r.rows.map((x) => [Number(x.idx), x.slug]),
+    [
+      [1, 'sv01-189'],
+      [2, null],
+      [3, 'sv01-094'],
+    ],
+  );
   await db.close();
 });
