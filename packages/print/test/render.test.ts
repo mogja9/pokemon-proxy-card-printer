@@ -96,3 +96,23 @@ test('renderHomePdf: N-up spans multiple pages for >9 cards', async () => {
   assert.equal(r19.pages, 3); // ceil(19 / 9)
   assert.equal(strFromU8(r19.pdf.slice(0, 5)), '%PDF-');
 });
+
+test('renderMpcZip: cumulative slot indices + order.xml across multiple items', async () => {
+  const buf = await testCardImage();
+  const r = await renderMpcZip(
+    [
+      { image: buf, quantity: 2, label: 'a' },
+      { image: buf, quantity: 3, label: 'b' },
+    ],
+    { dpi: 300 },
+  );
+  assert.equal(r.totalCards, 5);
+  assert.equal(r.bracket, 18); // mpcBracket(5)
+  const entries = unzipSync(r.zip);
+  const xml = strFromU8(entries['order.xml']!);
+  assert.match(xml, /<quantity>5<\/quantity>/);
+  assert.match(xml, /<slots>0,1<\/slots>/); // first item -> global slots 0,1
+  assert.match(xml, /<slots>2,3,4<\/slots>/); // second item -> global slots 2,3,4
+  const fronts = Object.keys(entries).filter((n) => n.startsWith('fronts/') && n.endsWith('.png'));
+  assert.equal(fronts.length, 2); // one PNG per distinct item
+});
