@@ -1,11 +1,15 @@
 # Proxy Printer
 
-A **free, open-source, self-hostable** website for finding any trading-card-game
+A **free, open-source, self-hostable** website for finding any **Pokémon TCG**
 card in every major language and printing **playtest proxies** at the fixed
 competitive card size (63x88 mm). Non-commercial; donations only.
 
-> The npm packages are scoped `@proxyforge/*` internally (the old working
-> codename); the public project name is **Proxy Printer**.
+> Naming: the public project name is **Proxy Printer** and every shipping
+> identity slot (npm scope `@proxyforge/*`, the docker-compose project) is kept
+> deliberately trademark-free - enforced by `scripts/brand-lint.mjs` per
+> `docs/ARCHITECTURE.md` sec.10. The GitHub repo is named descriptively
+> (`pokemon-proxy-card-printer`); "Pokémon" appears here and elsewhere only as
+> descriptive/nominative use, never in a brand slot.
 
 > Status: **Phases 0-4 done, plus the Meilisearch search backend.** Foundations
 > and the TCGdex data spine (Phase 1), the image pipeline (Phase 2: best
