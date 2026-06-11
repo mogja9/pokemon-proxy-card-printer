@@ -7,7 +7,7 @@
  */
 import type { Lang } from '@proxyforge/config';
 import { withTransaction, getPool } from '@proxyforge/db';
-import type { SetBrief, SourceAdapter } from './types.js';
+import type { SetBrief, SourceAdapter, NormalizedCard, SetDetail } from './types.js';
 import {
   upsertSeries,
   upsertCardSet,
@@ -48,6 +48,25 @@ function emptyStats(): IngestStats {
   };
 }
 
+/**
+ * A card inherits its set's promo/digital nature. briefToCard derives these
+ * from the set, but getCard (the --full path) re-derives them from the card's
+ * SERIES id, which misses promo sets (e.g. set 'svp' has series 'sv'), marking
+ * promo cards is_promo=false. Apply the authoritative set flags so both paths
+ * agree. Monotonic: only ever adds promo/digital-ness, which is always correct
+ * for a card that belongs to a promo/digital set.
+ */
+export function applySetFlags(
+  card: NormalizedCard,
+  set: Pick<SetDetail, 'isPromoSet' | 'isDigitalOnly'>,
+): NormalizedCard {
+  return {
+    ...card,
+    isPromo: card.isPromo || set.isPromoSet,
+    isDigitalOnly: card.isDigitalOnly || set.isDigitalOnly,
+  };
+}
+
 /** Ingest ONE (lang, set). Returns number of cards upserted. */
 async function ingestSet(
   adapter: SourceAdapter,
@@ -67,9 +86,10 @@ async function ingestSet(
 
     let count = 0;
     for (const cb of detail.cards) {
-      const card = opts.full
+      const raw = opts.full
         ? ((await adapter.getCard(lang, cb.id)) ?? adapter.briefToCard(cb, detail))
         : adapter.briefToCard(cb, detail);
+      const card = applySetFlags(raw, detail);
 
       const printId = await upsertCardPrint(client, cardSetId, card);
       await upsertLocalization(client, printId, lang, card);
