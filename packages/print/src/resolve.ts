@@ -44,7 +44,9 @@ export async function resolvePrintList(printListId: string): Promise<ResolveResu
        WHERE iv.card_print_id = pli.card_print_id
          AND iv.lang IN (pli.lang, 'en')
          AND (iv.storage_key IS NOT NULL OR iv.remote_url IS NOT NULL)
-       ORDER BY CASE WHEN iv.lang = pli.lang THEN 0 ELSE 1 END, iv.quality_rank DESC
+         AND NOT iv.has_bleed
+       ORDER BY CASE WHEN iv.lang = pli.lang THEN 0 ELSE 1 END, iv.quality_rank DESC,
+                (iv.storage_key IS NOT NULL) DESC, iv.id
        LIMIT 1
      ) best ON TRUE
      WHERE pli.print_list_id = $1

@@ -94,3 +94,26 @@ test('getCoverage(): the REAL function returns correct typed CoverageRows', asyn
     await db.close();
   }
 });
+
+test('card_display best-image: excludes bleed canvas; deterministic stored + id tiebreak', async () => {
+  const db = await freshDb();
+  await db.exec(`
+    INSERT INTO series (id,tcgdex_id,name_en) VALUES ('00000000-0000-0000-0000-000000000001','sv','S&V');
+    INSERT INTO card_set (id,set_id,series_id,name_en,ptcg_code) VALUES ('00000000-0000-0000-0000-0000000000a1','sv01','00000000-0000-0000-0000-000000000001','S&V','SVI');
+    INSERT INTO card_print (id,card_set_id,collector_number_raw) VALUES ('00000000-0000-0000-0000-0000000000c5','00000000-0000-0000-0000-0000000000a1','005');
+    INSERT INTO card_localization (card_print_id,lang,name) VALUES ('00000000-0000-0000-0000-0000000000c5','en','X');
+    -- e0: a bleed canvas with HIGHER rank + the smallest id -> must be EXCLUDED
+    INSERT INTO image_variant (id,card_print_id,lang,origin,serving_mode,storage_key,format,height_px,quality_rank,has_bleed) VALUES
+      ('00000000-0000-0000-0000-0000000000e0','00000000-0000-0000-0000-0000000000c5','en','malie_io','cache','kbleed','png',1122,100,true);
+    -- e1,e2: two same-rank stored sources -> id tiebreak picks e1 ('ka')
+    INSERT INTO image_variant (id,card_print_id,lang,origin,serving_mode,storage_key,format,height_px,quality_rank,has_bleed) VALUES
+      ('00000000-0000-0000-0000-0000000000e1','00000000-0000-0000-0000-0000000000c5','en','malie_io','cache','ka','png',1024,80,false),
+      ('00000000-0000-0000-0000-0000000000e2','00000000-0000-0000-0000-0000000000c5','en','pokemontcg_io','cache','kb','png',1024,80,false);
+  `);
+  await db.exec('REFRESH MATERIALIZED VIEW card_display');
+  const r = await db.query<{ image_key: string }>(
+    "SELECT image_key FROM card_display WHERE requested_lang='en' AND card_print_id='00000000-0000-0000-0000-0000000000c5'",
+  );
+  assert.equal(r.rows[0]?.image_key, 'ka'); // bleed e0 excluded despite rank 100; e1 < e2
+  await db.close();
+});

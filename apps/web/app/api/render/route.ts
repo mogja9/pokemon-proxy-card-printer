@@ -32,7 +32,9 @@ export async function POST(req: NextRequest): Promise<Response> {
          FROM image_variant iv
          WHERE iv.card_print_id = cp.id AND iv.lang IN ($2, 'en')
            AND (iv.storage_key IS NOT NULL OR iv.remote_url IS NOT NULL)
-         ORDER BY CASE WHEN iv.lang = $2 THEN 0 ELSE 1 END, iv.quality_rank DESC
+           AND NOT iv.has_bleed
+         ORDER BY CASE WHEN iv.lang = $2 THEN 0 ELSE 1 END, iv.quality_rank DESC,
+                  (iv.storage_key IS NOT NULL) DESC, iv.id
          LIMIT 1
        ) img ON TRUE
        WHERE cp.slug = $1 AND NOT cp.is_suppressed

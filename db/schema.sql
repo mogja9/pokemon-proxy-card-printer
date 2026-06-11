@@ -612,8 +612,10 @@ CROSS JOIN LATERAL (
   WHERE iv.card_print_id = cp.id
     AND (iv.storage_key IS NOT NULL OR iv.remote_url IS NOT NULL)
     AND iv.lang IN (langs.lang::lang_code, 'en')
+    AND NOT iv.has_bleed   -- a synthesized bleed canvas is never the display/source pick
   ORDER BY CASE WHEN iv.lang = langs.lang::lang_code THEN 0 ELSE 1 END,
-           iv.quality_rank DESC
+           iv.quality_rank DESC,
+           (iv.storage_key IS NOT NULL) DESC, iv.id  -- deterministic: prefer stored, then stable
   LIMIT 1
 ) best
 WHERE NOT cp.is_digital_only AND NOT cp.is_suppressed;
