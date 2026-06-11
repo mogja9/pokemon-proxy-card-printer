@@ -9,17 +9,32 @@ export default function AddToCart(props: {
   imageUrl: string | null;
 }) {
   const { add } = useCart();
-  const [added, setAdded] = useState(false);
+  const [added, setAdded] = useState(0);
+  const [qty, setQty] = useState(1);
   return (
-    <button
-      className="primary"
-      onClick={() => {
-        add({ slug: props.slug, lang: props.lang, name: props.name, imageUrl: props.imageUrl });
-        setAdded(true);
-        setTimeout(() => setAdded(false), 1200);
-      }}
-    >
-      {added ? 'Added ✓' : 'Add to print list'}
-    </button>
+    <span style={{ display: 'inline-flex', gap: 8, alignItems: 'center' }}>
+      <input
+        type="number"
+        min={1}
+        max={99}
+        value={qty}
+        aria-label="quantity"
+        style={{ width: 56 }}
+        onChange={(e) => setQty(Math.max(1, Math.min(99, Number(e.target.value) || 1)))}
+      />
+      <button
+        className="primary"
+        onClick={() => {
+          add(
+            { slug: props.slug, lang: props.lang, name: props.name, imageUrl: props.imageUrl },
+            qty,
+          );
+          setAdded(qty);
+          setTimeout(() => setAdded(0), 1400);
+        }}
+      >
+        {added ? `Added ${added} ✓` : 'Add to print list'}
+      </button>
+    </span>
   );
 }
