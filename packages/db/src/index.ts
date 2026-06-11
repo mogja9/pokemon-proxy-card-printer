@@ -13,10 +13,31 @@ export function getPool(): pg.Pool {
   return pool;
 }
 
+/** Minimal query interface an injected runner must satisfy (PGlite fits). */
+export interface QueryRunner {
+  query(text: string, params?: unknown[]): Promise<{ rows: unknown[] }>;
+}
+
+let testRunner: QueryRunner | null = null;
+
+/**
+ * TEST-ONLY seam: route query()/the pool through an injected runner (e.g. an
+ * in-process PGlite instance) so integration tests can exercise the REAL data
+ * functions against a real Postgres without a DATABASE_URL. Pass null to reset.
+ * Production code never calls this; the override is null by default.
+ */
+export function __setTestQueryRunner(runner: QueryRunner | null): void {
+  testRunner = runner;
+}
+
 export async function query<T extends pg.QueryResultRow = pg.QueryResultRow>(
   text: string,
   params: unknown[] = [],
 ): Promise<pg.QueryResult<T>> {
+  if (testRunner) {
+    const res = await testRunner.query(text, params);
+    return res as unknown as pg.QueryResult<T>;
+  }
   return getPool().query<T>(text, params as never[]);
 }
 

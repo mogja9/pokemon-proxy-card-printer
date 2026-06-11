@@ -13,7 +13,8 @@ import { PGlite } from '@electric-sql/pglite';
 import { pg_trgm } from '@electric-sql/pglite/contrib/pg_trgm';
 import { citext } from '@electric-sql/pglite/contrib/citext';
 import { pgcrypto } from '@electric-sql/pglite/contrib/pgcrypto';
-import { DECK_BY_SETCODE_BATCH_SQL, DECK_BY_NAME_BATCH_SQL } from '../src/deck.js';
+import { __setTestQueryRunner } from '@proxyforge/db';
+import { DECK_BY_SETCODE_BATCH_SQL, resolveDeckList } from '../src/deck.js';
 
 const SCHEMA_PATH = resolve(dirname(fileURLToPath(import.meta.url)), '../../../db/schema.sql');
 
@@ -59,20 +60,32 @@ test('batched set-code resolution: zero-pad + case agnostic, NULL for misses, or
   await db.close();
 });
 
-test('batched name fallback: case-insensitive, NULL for misses, one query for many', async () => {
+test('resolveDeckList(): real function - parse + batch + assemble, order/qty kept', async () => {
   const db = await freshDb();
   await db.exec(FIXTURE);
-  const r = await db.query<{ idx: number; slug: string | null }>(DECK_BY_NAME_BATCH_SQL, [
-    ['iono', 'Nonexistent Card', 'PIKACHU'],
-    'en',
-  ]);
-  assert.deepEqual(
-    r.rows.map((x) => [Number(x.idx), x.slug]),
-    [
-      [1, 'sv01-189'],
-      [2, null],
-      [3, 'sv01-094'],
-    ],
-  );
-  await db.close();
+  __setTestQueryRunner(db); // route @proxyforge/db.query at PGlite
+  try {
+    const deck = [
+      '4 Pikachu SVI 94', // set code + number (stored 094)
+      '2 Iono', // name-only -> name fallback
+      '1 Ghost OBF 999', // set-code miss then name miss -> unresolved
+      '3 PIKACHU', // name fallback, case-insensitive
+    ].join('\n');
+    const res = await resolveDeckList(deck, 'en');
+    // resolved keeps input order + qty; PIKACHU resolves via the name pass
+    assert.deepEqual(
+      res.resolved.map((r) => [r.qty, r.slug]),
+      [
+        [4, 'sv01-094'],
+        [2, 'sv01-189'],
+        [3, 'sv01-094'],
+      ],
+    );
+    assert.equal(res.unresolved.length, 1);
+    assert.equal(res.unresolved[0]!.name, 'Ghost');
+    assert.match(res.unresolved[0]!.reason, /OBF 999/);
+  } finally {
+    __setTestQueryRunner(null);
+    await db.close();
+  }
 });
