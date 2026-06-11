@@ -7,8 +7,53 @@
  */
 import type { IndexSettings } from './client.js';
 
-export const INDEX_NAME = 'cards';
+/**
+ * One Meili index per language (`cards_en … cards_zh-tw`), per ARCHITECTURE.md
+ * sec "Search": per-index `localizedAttributes` forces the correct CJK
+ * tokenizer (jpn/cmn/kor) instead of one mixed index, and `nameEn` stays
+ * searchable in every index so an English query still finds the JA card.
+ */
+export const INDEX_PREFIX = 'cards';
 export const PRIMARY_KEY = 'id';
+
+/** Per-language index uid. lang codes are uid-safe (a-z0-9-_), incl. `zh-cn`. */
+export function indexNameForLang(lang: string): string {
+  return `${INDEX_PREFIX}_${lang}`;
+}
+
+/** Our lang code -> ISO-639-3 locale for Meili `localizedAttributes`. */
+const LANG_LOCALE: Record<string, string> = {
+  en: 'eng',
+  ja: 'jpn',
+  fr: 'fra',
+  de: 'deu',
+  it: 'ita',
+  es: 'spa',
+  pt: 'por',
+  ko: 'kor',
+  'zh-cn': 'cmn',
+  'zh-tw': 'cmn',
+};
+
+/** ISO-639-3 locale for a lang (defaults to English if unknown). */
+export function localeForLang(lang: string): string {
+  return LANG_LOCALE[lang] ?? 'eng';
+}
+
+/**
+ * Base settings + per-language `localizedAttributes`: the localized `name` is
+ * tokenized in this index's language; `nameEn` is always tokenized as English
+ * so cross-language English queries match.
+ */
+export function settingsForLang(lang: string): IndexSettings {
+  return {
+    ...INDEX_SETTINGS,
+    localizedAttributes: [
+      { attributePatterns: ['nameEn'], locales: ['eng'] },
+      { attributePatterns: ['name'], locales: [localeForLang(lang)] },
+    ],
+  };
+}
 
 /** Meili doc id: card_print uuid + requested language. Both are id-safe (a-z0-9-_). */
 export function cardDocId(cardPrintId: string, lang: string): string {

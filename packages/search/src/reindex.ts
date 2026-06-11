@@ -1,7 +1,8 @@
-/** Build/refresh the Meili index from the card_display read-model. */
+/** Build/refresh the per-language Meili indexes from the card_display read-model. */
 import { query } from '@proxyforge/db';
+import { LAUNCH_LANGS } from '@proxyforge/config';
 import type { MeiliClient } from './client.js';
-import { INDEX_NAME, INDEX_SETTINGS, PRIMARY_KEY, rowToDoc } from './document.js';
+import { indexNameForLang, settingsForLang, PRIMARY_KEY, rowToDoc } from './document.js';
 
 const SELECT_COLS = `
   cd.card_print_id, cd.requested_lang, cd.set_id, cd.slug,
@@ -44,9 +45,14 @@ export async function reindexAll(
     await query('REFRESH MATERIALIZED VIEW card_display');
   }
 
-  await client.ensureIndex(INDEX_NAME, PRIMARY_KEY);
-  const settingsTask = await client.updateSettings(INDEX_NAME, INDEX_SETTINGS);
-  await client.waitForTask(settingsTask.taskUid);
+  // Ensure + configure one index per target language up front (CJK locales).
+  const targetLangs = langs ?? [...LAUNCH_LANGS];
+  for (const lang of targetLangs) {
+    const uid = indexNameForLang(lang);
+    await client.ensureIndex(uid, PRIMARY_KEY);
+    const settingsTask = await client.updateSettings(uid, settingsForLang(lang));
+    await client.waitForTask(settingsTask.taskUid);
+  }
 
   let indexed = 0;
   let lastId: string | null = null;
@@ -74,8 +80,17 @@ export async function reindexAll(
     if (res.rows.length === 0) break;
 
     const docs = res.rows.map(rowToDoc);
-    const task = await client.addDocuments(INDEX_NAME, docs, PRIMARY_KEY);
-    lastTaskUid = task.taskUid;
+    // route each doc to its language's index
+    const byLang = new Map<string, typeof docs>();
+    for (const doc of docs) {
+      const list = byLang.get(doc.lang) ?? [];
+      list.push(doc);
+      byLang.set(doc.lang, list);
+    }
+    for (const [lang, langDocs] of byLang) {
+      const task = await client.addDocuments(indexNameForLang(lang), langDocs, PRIMARY_KEY);
+      lastTaskUid = task.taskUid; // Meili's task queue is global FIFO
+    }
     indexed += docs.length;
     opts.onProgress?.(indexed);
 

@@ -189,9 +189,14 @@ Still open (roughly in priority order):
       No ja/ko/zh - the JA scraper is still the native-JA path.
 - [ ] **Production serve plane** - SeaweedFS object storage + imgproxy
       derivatives (today images are local-FS only).
-- [ ] **Search refinement** - the index is currently a single Meili index with a
-      `lang` filter; per-language indexes with CJK tokenizers (the architecture's
-      design) would improve ja/ko/zh recall.
+- [x] **Search refinement - per-language indexes DONE.** Replaced the single
+      `cards` index + `lang` filter with one index per language (`cards_en …
+      cards_zh-tw`) and per-index `localizedAttributes` (jpn/cmn/kor) for correct
+      CJK tokenization; `nameEn` stays searchable in every index so an English
+      query still finds the JA card. Contained to `@proxyforge/search` (the web
+      `searchCards` API is unchanged). Needs a live-Meili smoke test. Remaining
+      follow-up: federated `/multi-search` for cross-language results in one query
+      (see `docs/OPEN_ITEMS.md`).
 - [ ] **Optional Real-ESRGAN upscaling** (Phase 6) for low-DPI sources.
 - [ ] **KR / Simplified-Chinese** image scarcity + watermarked-source legal review.
 - [ ] **Coverage dashboard + admin UI** for the `card_print_review` queue

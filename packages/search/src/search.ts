@@ -1,5 +1,5 @@
 /** Query-time: build a Meili /search request and run it. */
-import { INDEX_NAME, type CardDoc } from './document.js';
+import { indexNameForLang, type CardDoc } from './document.js';
 import type { MeiliClient } from './client.js';
 
 export interface SearchQuery {
@@ -42,7 +42,8 @@ export function buildSearchRequest(p: SearchQuery): MeiliRequest {
   const page = Math.max(1, p.page ?? 1);
   const q = (p.q ?? '').trim();
 
-  const filter = [`lang = ${filterValue(p.lang)}`];
+  // The index IS the language now (cards_<lang>), so no lang filter is needed.
+  const filter: string[] = [];
   if (p.set) filter.push(`setId = ${filterValue(p.set)}`);
   if (p.supertype) filter.push(`supertype = ${filterValue(p.supertype)}`);
   if (p.promoOnly) filter.push('isPromo = true');
@@ -56,7 +57,10 @@ export function buildSearchRequest(p: SearchQuery): MeiliRequest {
 
 export async function searchDocs(client: MeiliClient, p: SearchQuery): Promise<SearchHits> {
   const req = buildSearchRequest(p);
-  const res = await client.search<CardDoc>(INDEX_NAME, req as unknown as Record<string, unknown>);
+  const res = await client.search<CardDoc>(
+    indexNameForLang(p.lang),
+    req as unknown as Record<string, unknown>,
+  );
   return {
     docs: res.hits,
     total: res.totalHits,
