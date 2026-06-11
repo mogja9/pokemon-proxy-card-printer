@@ -20,9 +20,21 @@ export const MPC_BRACKETS = [
   18, 36, 55, 72, 90, 108, 126, 144, 162, 180, 198, 216, 234, 396, 504, 612,
 ] as const;
 
+/** Largest single MPC order for this product. Beyond this the order must split. */
+export const MPC_MAX_BRACKET: number = MPC_BRACKETS[MPC_BRACKETS.length - 1]!;
+
 export function mpcBracket(qty: number): number {
   for (const b of MPC_BRACKETS) if (qty <= b) return b;
-  return MPC_BRACKETS[MPC_BRACKETS.length - 1]!;
+  return MPC_MAX_BRACKET;
+}
+
+/**
+ * True when the order exceeds MPC's largest bracket - the returned bracket is
+ * then SMALLER than the quantity (an invalid single order), so the caller must
+ * split it across multiple MPC orders.
+ */
+export function exceedsMpcCapacity(qty: number): boolean {
+  return qty > MPC_MAX_BRACKET;
 }
 
 function sanitize(label: string | undefined): string {
@@ -49,6 +61,8 @@ export interface MpcResult {
   bracket: number;
   totalCards: number;
   canvasPx: { w: number; h: number };
+  /** total exceeds MPC's max bracket: bracket < totalCards, must split the order. */
+  exceedsCapacity: boolean;
 }
 
 export async function renderMpcZip(items: PrintItem[], opts: MpcOptions): Promise<MpcResult> {
@@ -103,5 +117,11 @@ export async function renderMpcZip(items: PrintItem[], opts: MpcOptions): Promis
       'copyright their respective owners.\n',
   );
 
-  return { zip: zipSync(files, { level: 6 }), bracket, totalCards: total, canvasPx: mpcCanvasPx(opts.dpi) };
+  return {
+    zip: zipSync(files, { level: 6 }),
+    bracket,
+    totalCards: total,
+    canvasPx: mpcCanvasPx(opts.dpi),
+    exceedsCapacity: exceedsMpcCapacity(total),
+  };
 }
