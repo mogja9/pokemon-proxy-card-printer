@@ -2,12 +2,22 @@
 import { indexNameForLang, type CardDoc } from './document.js';
 import type { MeiliClient } from './client.js';
 
+/** Browse sort orders (all use existing Meili sortable attributes - no reindex). */
+export type BrowseSort = 'newest' | 'oldest' | 'set';
+
+const BROWSE_SORTS: Record<BrowseSort, string[]> = {
+  newest: ['releaseTs:desc', 'setId:asc', 'collectorNumberNum:asc'],
+  oldest: ['releaseTs:asc', 'setId:asc', 'collectorNumberNum:asc'],
+  set: ['setId:asc', 'collectorNumberNum:asc'],
+};
+
 export interface SearchQuery {
   lang: string;
   q?: string;
   set?: string;
   supertype?: string;
   promoOnly?: boolean;
+  sort?: BrowseSort;
   page?: number;
   pageSize?: number;
 }
@@ -49,9 +59,9 @@ export function buildSearchRequest(p: SearchQuery): MeiliRequest {
   if (p.promoOnly) filter.push('isPromo = true');
 
   const req: MeiliRequest = { q, filter, page, hitsPerPage: pageSize };
-  // No text query -> deterministic catalog order (newest set first), mirroring the
-  // Postgres browse ordering. With a query, Meili's relevance ranking wins.
-  if (!q) req.sort = ['releaseTs:desc', 'setId:asc', 'collectorNumberNum:asc'];
+  // No text query -> deterministic browse order chosen by the user (default
+  // newest). With a query, Meili's relevance ranking wins (sort is ignored).
+  if (!q) req.sort = BROWSE_SORTS[p.sort ?? 'newest'];
   return req;
 }
 

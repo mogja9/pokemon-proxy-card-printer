@@ -36,3 +36,17 @@ test('whitespace-only query is treated as browse (sorted, empty q)', () => {
   assert.equal(r.q, '');
   assert.ok(r.sort);
 });
+
+test('browse sort: newest (default) / oldest / set, ignored when a query is present', () => {
+  assert.deepEqual(buildSearchRequest({ lang: 'en' }).sort, [
+    'releaseTs:desc', 'setId:asc', 'collectorNumberNum:asc',
+  ]);
+  assert.deepEqual(buildSearchRequest({ lang: 'en', sort: 'oldest' }).sort, [
+    'releaseTs:asc', 'setId:asc', 'collectorNumberNum:asc',
+  ]);
+  assert.deepEqual(buildSearchRequest({ lang: 'en', sort: 'set' }).sort, [
+    'setId:asc', 'collectorNumberNum:asc',
+  ]);
+  // a text query -> relevance ranking, sort omitted even if requested
+  assert.equal(buildSearchRequest({ lang: 'en', q: 'pika', sort: 'oldest' }).sort, undefined);
+});
