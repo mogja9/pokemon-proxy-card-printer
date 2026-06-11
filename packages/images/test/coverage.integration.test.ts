@@ -15,7 +15,8 @@ import { PGlite } from '@electric-sql/pglite';
 import { pg_trgm } from '@electric-sql/pglite/contrib/pg_trgm';
 import { citext } from '@electric-sql/pglite/contrib/citext';
 import { pgcrypto } from '@electric-sql/pglite/contrib/pgcrypto';
-import { COVERAGE_SQL } from '../src/coverage.js';
+import { __setTestQueryRunner } from '@proxyforge/db';
+import { getCoverage } from '../src/coverage.js';
 
 const SCHEMA_PATH = resolve(dirname(fileURLToPath(import.meta.url)), '../../../db/schema.sql');
 
@@ -73,27 +74,23 @@ test('schema loads in PGlite; trigger derives slug + normalized collector number
   await db.close();
 });
 
-test('COVERAGE_SQL: real card_display counts (native / EN-fallback / hi-res / missing)', async () => {
+test('getCoverage(): the REAL function returns correct typed CoverageRows', async () => {
   const db = await freshDb();
   await db.exec(FIXTURE);
   await db.exec('REFRESH MATERIALIZED VIEW card_display');
-  const res = await db.query<Record<string, string>>(COVERAGE_SQL, [null]);
-  const pick = (lang: string) => res.rows.find((r) => r.setId === 'sv01' && r.lang === lang)!;
-  const num = (r: Record<string, string>) => ({
-    eligible: Number(r.eligible),
-    anyImage: Number(r.anyImage),
-    hires: Number(r.hires),
-    native: Number(r.native),
-    enFallback: Number(r.enFallback),
-    missing: Number(r.missing),
-  });
-  // en: A,B,C,D eligible; A,B,C have a 296 image; D has none
-  assert.deepEqual(num(pick('en')), {
-    eligible: 4, anyImage: 3, hires: 3, native: 3, enFallback: 0, missing: 1,
-  });
-  // fr: A,C eligible; A native@242, C served via EN-fallback@296
-  assert.deepEqual(num(pick('fr')), {
-    eligible: 2, anyImage: 2, hires: 1, native: 1, enFallback: 1, missing: 0,
-  });
-  await db.close();
+  __setTestQueryRunner(db); // route @proxyforge/db.query at PGlite
+  try {
+    const rows = await getCoverage();
+    const pick = (lang: string) => rows.find((r) => r.setId === 'sv01' && r.lang === lang)!;
+    // full-object deepEqual proves the bigint->Number coercion + row shape too
+    assert.deepEqual(pick('en'), {
+      setId: 'sv01', lang: 'en', eligible: 4, anyImage: 3, hires: 3, native: 3, enFallback: 0, missing: 1,
+    });
+    assert.deepEqual(pick('fr'), {
+      setId: 'sv01', lang: 'fr', eligible: 2, anyImage: 2, hires: 1, native: 1, enFallback: 1, missing: 0,
+    });
+  } finally {
+    __setTestQueryRunner(null);
+    await db.close();
+  }
 });
