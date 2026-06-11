@@ -1,12 +1,13 @@
 /**
  * Resolve a print_list (DB) into renderable PrintItems. Best image per
  * (card_print, requested lang) with English-image fallback, mirroring the
- * card_display read-model pick. Phase 1 images are hotlinks (remote_url); Phase 2
- * adds storage_key (SeaweedFS) fetch.
+ * card_display read-model pick. Prefers the locally stored copy (storage_key)
+ * and falls back to the remote hotlink (remote_url).
  */
 import { query } from '@proxyforge/db';
 import type { Lang } from '@proxyforge/config';
 import type { PrintItem } from './homepdf.js';
+import { loadPrintImageBytes } from './image-source.js';
 
 export async function fetchImageBuffer(url: string): Promise<Buffer> {
   const res = await fetch(url, { headers: { 'user-agent': 'ProxyForge/0.1 (+print)' } });
@@ -54,17 +55,13 @@ export async function resolvePrintList(printListId: string): Promise<ResolveResu
   const items: PrintItem[] = [];
   const missing: { slug: string; lang: Lang }[] = [];
   for (const r of rows) {
-    if (!r.url) {
-      // storage_key (S3) fetch is Phase 2; for now we need a hotlink URL.
-      missing.push({ slug: r.slug, lang: r.lang });
-      continue;
-    }
-    try {
-      const image = await fetchImageBuffer(r.url);
+    // prefer the local stored copy; fall back to the remote hotlink. null means
+    // neither yielded bytes - report it missing but keep resolving the rest so
+    // one unreachable image never aborts the whole print job.
+    const image = await loadPrintImageBytes(r.storage_key, r.url);
+    if (image) {
       items.push({ image, quantity: r.quantity, label: `${r.slug}_${r.lang}` });
-    } catch {
-      // one unreachable image must not abort the whole print job - report it as
-      // missing and keep resolving the rest.
+    } else {
       missing.push({ slug: r.slug, lang: r.lang });
     }
   }
