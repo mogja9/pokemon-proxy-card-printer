@@ -115,6 +115,16 @@ export function mmToPt(mm: number): number {
 }
 
 /**
+ * Crop-tick length (mm). Ticks live IN the gutter and point outward from each
+ * trim corner, so a tick must be at most HALF the gutter - then two adjacent
+ * cards' ticks meet at the gutter midline (a clean continuous cut guide) instead
+ * of overlapping or, at gutter 0, drawing over the neighbouring card's art.
+ */
+export function cropTickMm(gutterMm: number): number {
+  return Math.min(CROP_TICK_MM, Math.max(0, gutterMm) / 2);
+}
+
+/**
  * With home bleed, the inked footprint is blockH + 2*bleed tall. On US Letter that
  * exceeds the printer's safe area, so bleed requires A4 (see sec.8.3).
  */

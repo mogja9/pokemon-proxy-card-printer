@@ -39,19 +39,30 @@ export class PokemonTcgIoAdapter implements SourceAdapter {
 
   async listSets(lang: Lang): Promise<SetBrief[]> {
     if (lang !== 'en') return [];
-    const res = await fetchJson<{ data: RawPtcgSet[] }>(`${this.base}/sets?pageSize=250`, {
-      limiter: this.limiter,
-      headers: this.headers,
-    });
-    if (!res) return [];
-    return res.data.map((s) => ({
-      id: s.id,
-      name: s.name,
-      cardCountOfficial: s.printedTotal,
-      cardCountTotal: s.total,
-      logoUrl: s.images?.logo,
-      symbolUrl: s.images?.symbol,
-    }));
+    const pageSize = 250;
+    const out: SetBrief[] = [];
+    // pokemontcg.io paginates; a single fixed page silently truncates once the
+    // catalogue exceeds pageSize. Follow pages until the catalogue is exhausted.
+    for (let page = 1; ; page++) {
+      const res = await fetchJson<{ data: RawPtcgSet[]; totalCount?: number }>(
+        `${this.base}/sets?page=${page}&pageSize=${pageSize}`,
+        { limiter: this.limiter, headers: this.headers },
+      );
+      if (!res || !res.data?.length) break;
+      for (const s of res.data) {
+        out.push({
+          id: s.id,
+          name: s.name,
+          cardCountOfficial: s.printedTotal,
+          cardCountTotal: s.total,
+          logoUrl: s.images?.logo,
+          symbolUrl: s.images?.symbol,
+        });
+      }
+      if (res.data.length < pageSize) break;
+      if (res.totalCount != null && out.length >= res.totalCount) break;
+    }
+    return out;
   }
 
   async getSet(_lang: Lang, _setId: string): Promise<SetDetail | null> {

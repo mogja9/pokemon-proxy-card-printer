@@ -10,6 +10,7 @@ import {
   mmToPt,
   bleedFitsPaper,
   contentFitsPaper,
+  cropTickMm,
 } from '../src/geometry.js';
 
 test('trimPx: 744x1039 @300, 1488x2079 @600 (formula-consistent)', () => {
@@ -90,4 +91,12 @@ test('contentFitsPaper: trim block must stay in printable area', () => {
   assert.equal(contentFitsPaper('A4', 0), true);
   assert.equal(contentFitsPaper('letter', 0), true); // tight 264 block fits Letter
   assert.equal(contentFitsPaper('letter', 4), false); // gutter pushes outer rows into the margin
+});
+
+test('cropTickMm: <= half the gutter so adjacent ticks never overlap a card', () => {
+  assert.equal(cropTickMm(0), 0); // gutter 0 -> no ticks (must not draw onto neighbours)
+  assert.equal(cropTickMm(4), 2); // default gutter -> ticks meet at the midline
+  assert.equal(cropTickMm(6), 3); // exactly the CROP_TICK_MM cap
+  assert.equal(cropTickMm(20), 3); // capped at CROP_TICK_MM
+  assert.equal(cropTickMm(-5), 0); // defensive: negative -> 0
 });
