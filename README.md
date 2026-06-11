@@ -116,8 +116,11 @@ button (`1 <name> <SETCODE> <number>`, pasteable into a decklist and
 round-trippable through Import), a localStorage print list,
 and a one-click render to home PDF or MakePlayingCards ZIP (with paper, DPI,
 gutter, and bleed options, plus an optional deck name that slugifies into the
-download filename, e.g. `my-lugia-deck.pdf`). Search is served by Meilisearch
-with the Postgres fallback described above.
+download filename, e.g. `my-lugia-deck.pdf`). The render options (target,
+paper, DPI, gutter, bleed, deck name) persist in localStorage and are restored
+on the next visit, with each stored field validated/clamped on load so a stale
+entry can never put the form into an invalid state. Search is served by
+Meilisearch with the Postgres fallback described above.
 
 **Decklist import.** Paste a Pokémon TCG Live / Limitless decklist
 (`<qty> <name> [<setCode> <number>]`, e.g. `4 Pikachu SVI 94`; Trainer/Energy

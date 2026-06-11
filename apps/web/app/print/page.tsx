@@ -1,10 +1,13 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { LAUNCH_LANGS } from '@proxyforge/config';
 import { useCart } from '@/lib/cart';
 import { buildDeckExport, summarizeBySupertype } from '@/lib/printlist';
 import { deckFileName } from '@/lib/filename';
+import { loadRenderOptions, serializeRenderOptions } from '@/lib/renderOptions';
+
+const RENDER_OPTS_KEY = 'pf.renderopts.v1';
 
 // MakePlayingCards' largest single-order bracket. Mirrors @proxyforge/print
 // MPC_MAX_ORDER, hardcoded because this client component cannot import the
@@ -35,6 +38,32 @@ export default function PrintPage() {
   const [importMsg, setImportMsg] = useState('');
   const [unresolved, setUnresolved] = useState<Unresolved[]>([]);
   const [copied, setCopied] = useState(false);
+
+  // Restore the render options from a previous visit, then persist on change.
+  // hydrated gates the save effect so the initial defaults never clobber the
+  // stored values before the load effect has run.
+  const hydrated = useRef(false);
+  useEffect(() => {
+    const o = loadRenderOptions(window.localStorage.getItem(RENDER_OPTS_KEY));
+    setTarget(o.target);
+    setPaper(o.paper);
+    setDpi(o.dpi);
+    setBleed(o.bleed);
+    setGutter(o.gutter);
+    setDeckName(o.deckName);
+    hydrated.current = true;
+  }, []);
+  useEffect(() => {
+    if (!hydrated.current) return;
+    try {
+      window.localStorage.setItem(
+        RENDER_OPTS_KEY,
+        serializeRenderOptions({ target: target as 'pdf' | 'mpc', paper: paper as 'A4' | 'letter', dpi: dpi as '300' | '600', bleed, gutter, deckName }),
+      );
+    } catch {
+      /* storage full/unavailable: a non-persisted option is not worth crashing */
+    }
+  }, [target, paper, dpi, bleed, gutter, deckName]);
 
   const total = items.reduce((n, x) => n + x.qty, 0);
   const sheets = Math.ceil(total / 9); // 3x3 N-up
