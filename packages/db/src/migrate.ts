@@ -19,9 +19,29 @@ const SCHEMA_PATH = resolve(__dirname, '../../../db/schema.sql');
 async function main(): Promise<void> {
   const args = new Set(process.argv.slice(2));
   const drop = args.has('--drop');
+  const check = args.has('--check');
 
   const sql = await readFile(SCHEMA_PATH, 'utf8');
   const pool = getPool();
+
+  // --check: validate the DDL parses + executes without persisting anything,
+  // by applying it inside a transaction and rolling back.
+  if (check) {
+    console.log(`[migrate] --check: applying ${SCHEMA_PATH} in a transaction, then ROLLBACK`);
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query(sql);
+      await client.query('ROLLBACK');
+      console.log('[migrate] --check OK: schema.sql applies cleanly (rolled back, nothing persisted)');
+    } catch (err) {
+      await client.query('ROLLBACK').catch(() => {});
+      throw err;
+    } finally {
+      client.release();
+    }
+    return;
+  }
 
   if (drop) {
     console.warn('[migrate] --drop: DROP SCHEMA public CASCADE (dev reset)');
