@@ -1,10 +1,17 @@
 'use client';
 import { useState } from 'react';
 import Link from 'next/link';
+import { LAUNCH_LANGS } from '@proxyforge/config';
 import { useCart } from '@/lib/cart';
 
+interface Unresolved {
+  qty: number;
+  name: string;
+  reason: string;
+}
+
 export default function PrintPage() {
-  const { items, setQty, remove, clear } = useCart();
+  const { items, add, setQty, remove, clear } = useCart();
   const [paper, setPaper] = useState('A4');
   const [dpi, setDpi] = useState('300');
   const [bleed, setBleed] = useState(false);
@@ -13,6 +20,11 @@ export default function PrintPage() {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const [warn, setWarn] = useState('');
+  const [deckText, setDeckText] = useState('');
+  const [importLang, setImportLang] = useState('en');
+  const [importing, setImporting] = useState(false);
+  const [importMsg, setImportMsg] = useState('');
+  const [unresolved, setUnresolved] = useState<Unresolved[]>([]);
 
   const total = items.reduce((n, x) => n + x.qty, 0);
   const sheets = Math.ceil(total / 9);
@@ -53,17 +65,96 @@ export default function PrintPage() {
     }
   }
 
-  if (!items.length) {
-    return (
-      <p>
-        Your print list is empty. <Link href="/">Browse cards</Link> and add some.
-      </p>
-    );
+  async function importDeck() {
+    setImporting(true);
+    setImportMsg('');
+    setUnresolved([]);
+    setErr('');
+    try {
+      const res = await fetch('/api/deck/resolve', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ text: deckText, lang: importLang }),
+      });
+      if (!res.ok) throw new Error((await res.text()) || `import failed (${res.status})`);
+      const data = (await res.json()) as {
+        resolved: { qty: number; name: string; slug: string; lang: string }[];
+        unresolved: Unresolved[];
+      };
+      for (const r of data.resolved) {
+        add({ slug: r.slug, lang: r.lang, name: r.name, imageUrl: null }, r.qty);
+      }
+      setUnresolved(data.unresolved);
+      const added = data.resolved.reduce((n, r) => n + r.qty, 0);
+      setImportMsg(
+        `Added ${added} card${added === 1 ? '' : 's'} from ${data.resolved.length} line${
+          data.resolved.length === 1 ? '' : 's'
+        }.`,
+      );
+      if (data.resolved.length) setDeckText('');
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : String(e));
+    } finally {
+      setImporting(false);
+    }
   }
 
   return (
     <>
       <h1>Print list</h1>
+
+      <details className="import" open={!items.length}>
+        <summary>Import a decklist</summary>
+        <p style={{ color: 'var(--muted)', fontSize: 12 }}>
+          Paste a Pokémon TCG Live / Limitless decklist, e.g. <code>4 Pikachu SVI 94</code>.
+          Trainer/Energy lines can be name-only.
+        </p>
+        <textarea
+          value={deckText}
+          onChange={(e) => setDeckText(e.target.value)}
+          rows={8}
+          placeholder={'Pokémon: 12\n4 Pikachu SVI 94\n2 Charizard ex OBF 125\n\nTrainer: 1\n3 Iono\n\nEnergy: 1\n8 Lightning Energy'}
+          style={{ width: '100%', fontFamily: 'monospace', boxSizing: 'border-box' }}
+        />
+        <div className="optrow">
+          <label>
+            List language
+            <select value={importLang} onChange={(e) => setImportLang(e.target.value)}>
+              {LAUNCH_LANGS.map((l) => (
+                <option key={l} value={l}>
+                  {l}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button className="primary" disabled={importing || !deckText.trim()} onClick={importDeck}>
+            {importing ? 'Importing...' : 'Import to print list'}
+          </button>
+        </div>
+        {importMsg && <p style={{ color: '#9ae89a' }}>{importMsg}</p>}
+        {unresolved.length > 0 && (
+          <div style={{ color: '#e8c06a', fontSize: 13 }}>
+            <p>
+              {unresolved.length} line{unresolved.length === 1 ? '' : 's'} could not be matched
+              (add them manually from Browse):
+            </p>
+            <ul>
+              {unresolved.map((u, i) => (
+                <li key={i}>
+                  {u.qty} x {u.name} - {u.reason}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </details>
+
+      {!items.length ? (
+        <p style={{ color: 'var(--muted)' }}>
+          Your print list is empty. Paste a decklist above, or <Link href="/">browse cards</Link>.
+        </p>
+      ) : (
+        <>
       <p style={{ color: 'var(--muted)' }}>
         {total} card{total === 1 ? '' : 's'} · ~{sheets} A4 sheet{sheets === 1 ? '' : 's'} (3x3)
       </p>
@@ -130,11 +221,13 @@ export default function PrintPage() {
         </button>
         <button className="ghost" onClick={clear}>Clear list</button>
       </div>
-      {err && <p style={{ color: '#ff9a9a' }}>{err}</p>}
       {warn && <p style={{ color: '#e8c06a' }}>⚠ {warn}</p>}
       <p style={{ color: 'var(--muted)', fontSize: 12 }}>
         Cards print at the fixed 63x88mm size. With a gutter, cut on the corner marks; bleed requires A4.
       </p>
+        </>
+      )}
+      {err && <p style={{ color: '#ff9a9a' }}>{err}</p>}
     </>
   );
 }
