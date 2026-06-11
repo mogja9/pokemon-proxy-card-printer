@@ -110,7 +110,8 @@ npm run web:dev                        # http://localhost:3000
 ```
 
 Faceted browse (set / language / type / promo + name search), card detail with a
-language switcher and DPI / English-fallback badges, a localStorage print list,
+language switcher, DPI / English-fallback badges, and a quantity selector when
+adding to the list (add 4 copies in one click), a localStorage print list,
 and a one-click render to home PDF or MakePlayingCards ZIP (with paper, DPI,
 gutter, and bleed options). Search is served by Meilisearch with the Postgres
 fallback described above.
