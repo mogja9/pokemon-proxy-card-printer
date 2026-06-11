@@ -59,11 +59,14 @@ export async function resolvePrintList(printListId: string): Promise<ResolveResu
       missing.push({ slug: r.slug, lang: r.lang });
       continue;
     }
-    items.push({
-      image: await fetchImageBuffer(r.url),
-      quantity: r.quantity,
-      label: `${r.slug}_${r.lang}`,
-    });
+    try {
+      const image = await fetchImageBuffer(r.url);
+      items.push({ image, quantity: r.quantity, label: `${r.slug}_${r.lang}` });
+    } catch {
+      // one unreachable image must not abort the whole print job - report it as
+      // missing and keep resolving the rest.
+      missing.push({ slug: r.slug, lang: r.lang });
+    }
   }
   return { items, missing };
 }

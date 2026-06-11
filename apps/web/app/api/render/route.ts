@@ -24,8 +24,13 @@ async function loadBytes(storageKey: string | null, remoteUrl: string | null): P
     }
   }
   if (remoteUrl) {
-    const r = await fetch(remoteUrl, { headers: { 'user-agent': 'ProxyForge/0.1 (+render)' } });
-    if (r.ok) return Buffer.from(await r.arrayBuffer());
+    try {
+      const r = await fetch(remoteUrl, { headers: { 'user-agent': 'ProxyForge/0.1 (+render)' } });
+      if (r.ok) return Buffer.from(await r.arrayBuffer());
+    } catch {
+      // network-level failure (DNS, refused, source down): treat as missing
+      // rather than 500-ing the whole render request.
+    }
   }
   return null;
 }

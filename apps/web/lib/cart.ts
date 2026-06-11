@@ -23,7 +23,14 @@ function read(): CartItem[] {
 }
 
 function write(items: CartItem[]): void {
-  window.localStorage.setItem(KEY, JSON.stringify(items));
+  try {
+    window.localStorage.setItem(KEY, JSON.stringify(items));
+  } catch (err) {
+    // localStorage full (~5MB cap) or unavailable (private mode): never crash
+    // the UI over a persistence failure. The event still fires so listeners
+    // re-read the last persisted state.
+    console.warn('[cart] could not persist print list:', err);
+  }
   window.dispatchEvent(new Event(EVT));
 }
 
