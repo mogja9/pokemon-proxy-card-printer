@@ -601,7 +601,9 @@ LEFT JOIN LATERAL (
     cl.lang::text)
   LIMIT 1
 ) anyname ON TRUE
--- best image: localized first, else EN; hotlink-inclusive
+-- best image: localized first, else EN; hotlink-inclusive.
+-- SYNC: this WHERE + ORDER BY must stay identical to print/resolve.ts, web/db.ts,
+-- and the render route, or the materialized preview and a fresh print/render pick differ.
 CROSS JOIN LATERAL (
   SELECT iv.storage_key, iv.remote_url,
          CASE WHEN iv.storage_key IS NOT NULL THEN 'stored' ELSE 'hotlink' END AS served_mode,
