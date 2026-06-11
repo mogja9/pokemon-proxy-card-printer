@@ -14,8 +14,8 @@
   ],
   "scripts": {
     "typecheck": "tsc -b",
-    "test": "node --import tsx --test \"packages/**/test/*.test.ts\"",
-    "test:net": "PPF_RUN_NET_TESTS=1 node --import tsx --test \"packages/**/test/*.test.ts\"",
+    "test": "node --import tsx --test \"packages/**/test/*.test.ts\" \"apps/web/test/*.test.ts\"",
+    "test:net": "PPF_RUN_NET_TESTS=1 node --import tsx --test \"packages/**/test/*.test.ts\" \"apps/web/test/*.test.ts\"",
     "migrate": "node --import tsx packages/db/src/migrate.ts",
     "ingest": "node --import tsx packages/ingest/src/cli.ts",
     "images": "node --import tsx packages/images/src/cli.ts",
