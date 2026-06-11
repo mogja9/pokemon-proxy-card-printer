@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { LAUNCH_LANGS } from '@proxyforge/config';
 import { useCart } from '@/lib/cart';
 import { buildDeckExport, summarizeBySupertype } from '@/lib/printlist';
+import { deckFileName } from '@/lib/filename';
 
 // MakePlayingCards' largest single-order bracket. Mirrors @proxyforge/print
 // MPC_MAX_ORDER, hardcoded because this client component cannot import the
@@ -24,6 +25,7 @@ export default function PrintPage() {
   const [bleed, setBleed] = useState(false);
   const [gutter, setGutter] = useState('4');
   const [target, setTarget] = useState('pdf');
+  const [deckName, setDeckName] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const [warn, setWarn] = useState('');
@@ -80,7 +82,7 @@ export default function PrintPage() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = target === 'mpc' ? 'proxies-mpc.zip' : 'proxies.pdf';
+      a.download = deckFileName(deckName, target === 'mpc' ? 'mpc' : 'pdf');
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -236,6 +238,16 @@ export default function PrintPage() {
       </details>
 
       <div className="optrow">
+        <label>Deck name
+          <input
+            type="text"
+            value={deckName}
+            placeholder="optional"
+            maxLength={80}
+            style={{ width: 160 }}
+            onChange={(e) => setDeckName(e.target.value)}
+          />
+        </label>
         <label>Output
           <select value={target} onChange={(e) => setTarget(e.target.value)}>
             <option value="pdf">Home PDF (3x3)</option>
@@ -287,6 +299,7 @@ export default function PrintPage() {
       {warn && <p style={{ color: '#e8c06a' }}>⚠ {warn}</p>}
       <p style={{ color: 'var(--muted)', fontSize: 12 }}>
         Cards print at the fixed 63x88mm size. With a gutter, cut on the corner marks; bleed requires A4.
+        {' '}Saves as <code>{deckFileName(deckName, target === 'mpc' ? 'mpc' : 'pdf')}</code>.
       </p>
         </>
       )}
