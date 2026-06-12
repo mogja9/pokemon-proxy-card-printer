@@ -26,6 +26,18 @@ test('pageSize clamps to [1,120]; page floors at 1; defaults to 48', () => {
   assert.equal(buildSearchRequest({ lang: 'en' }).hitsPerPage, 48);
 });
 
+test('page/pageSize coerce to a finite integer (no NaN/Infinity/fraction leaks)', () => {
+  // NaN must not propagate to hitsPerPage/page (NaN is not nullish, so ?? kept it)
+  assert.equal(buildSearchRequest({ lang: 'en', pageSize: NaN }).hitsPerPage, 48);
+  assert.equal(buildSearchRequest({ lang: 'en', page: NaN }).page, 1);
+  assert.equal(buildSearchRequest({ lang: 'en', pageSize: Infinity }).hitsPerPage, 48);
+  assert.equal(buildSearchRequest({ lang: 'en', page: Infinity }).page, 1);
+  // fractional values floor to an integer rather than reaching Meili as a float
+  assert.equal(buildSearchRequest({ lang: 'en', pageSize: 48.9 }).hitsPerPage, 48);
+  assert.equal(buildSearchRequest({ lang: 'en', page: 2.9 }).page, 2);
+  assert.equal(buildSearchRequest({ lang: 'en', page: 3 }).page, 3);
+});
+
 test('filterValue escapes embedded quotes and backslashes', () => {
   assert.equal(filterValue('ab"c'), '"ab\\"c"');
   assert.equal(filterValue('a\\b'), '"a\\\\b"');
