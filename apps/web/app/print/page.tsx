@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { LAUNCH_LANGS } from '@proxyforge/config';
 import { useCart } from '@/lib/cart';
-import { buildExport, summarizeBySupertype, type ExportFormat } from '@/lib/printlist';
+import { buildExport, summarizeBySupertype, printListTotals, type ExportFormat } from '@/lib/printlist';
 import { deckFileName } from '@/lib/filename';
 import { loadRenderOptions, serializeRenderOptions } from '@/lib/renderOptions';
 import { findDuplicateLines, summarizeDuplicates } from '@/lib/decklint';
@@ -73,7 +73,7 @@ export default function PrintPage() {
     }
   }, [target, paper, dpi, bleed, gutter, deckName, printSort, exportFormat]);
 
-  const total = items.reduce((n, x) => n + x.qty, 0);
+  const { copies: total, unique } = printListTotals(items);
   const sheets = Math.ceil(total / 9); // 3x3 N-up
   // renderHomePdf switches Letter+bleed to A4, so label the paper actually used.
   const renderPaper = bleed && paper === 'letter' ? 'A4' : paper === 'letter' ? 'Letter' : 'A4';
@@ -232,7 +232,8 @@ export default function PrintPage() {
       ) : (
         <>
       <p style={{ color: 'var(--muted)' }}>
-        {total} card{total === 1 ? '' : 's'} · ~{sheets} {renderPaper} sheet
+        {total} card{total === 1 ? '' : 's'}
+        {unique !== total && <> ({unique} unique)</>} · ~{sheets} {renderPaper} sheet
         {sheets === 1 ? '' : 's'} (3x3)
         {multiType && <> · {summary}</>}
       </p>
