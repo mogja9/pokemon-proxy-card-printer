@@ -58,8 +58,24 @@ export function summarizeBySupertype(items: PrintListItem[]): string {
  * headers and per-section counts.
  */
 export function buildDeckExport(items: PrintListItem[]): string {
-  if (!items.some((i) => i.supertype)) return items.map((i) => `${i.qty} ${i.name}`).join('\n');
+  if (!items.some((i) => i.supertype)) return buildPlainExport(items);
   return groupBySupertype(items)
     .map((g) => `${g.label}: ${g.count}\n${g.items.map((i) => `${i.qty} ${i.name}`).join('\n')}`)
     .join('\n\n');
+}
+
+/**
+ * Flat `<qty> <name>` list with no section headers or counts, in the current
+ * order. Some import tools reject the grouped headers; this is the safe lowest
+ * common denominator and still round-trips with our own Import.
+ */
+export function buildPlainExport(items: PrintListItem[]): string {
+  return items.map((i) => `${i.qty} ${i.name}`).join('\n');
+}
+
+export type ExportFormat = 'grouped' | 'plain';
+
+/** Render the export in the chosen format. */
+export function buildExport(items: PrintListItem[], format: ExportFormat): string {
+  return format === 'plain' ? buildPlainExport(items) : buildDeckExport(items);
 }

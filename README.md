@@ -133,9 +133,10 @@ how many lines were combined (and the summed quantity), so a split playset is
 not mistaken for a missing one.
 
 **Decklist export.** "Export this list" on the print page emits a decklist
-(`<qty> <name>`) with a copy button, grouped into Pokémon / Trainer / Energy
-sections with counts (cards added by browsing or by Import carry their
-supertype). The print list header also shows a one-line breakdown by supertype
+(`<qty> <name>`) with a copy button, in one of two formats: Grouped into
+Pokémon / Trainer / Energy sections with counts (cards added by browsing or by
+Import carry their supertype), or Plain (`<qty> <name>` lines only, no headers)
+for tools that reject section headers. The print list header also shows a one-line breakdown by supertype
 (e.g. `12 Pokémon · 34 Trainer · 14 Energy`) when the list spans more than one.
 Save a list or move it between devices (the localStorage cart is per-browser);
 it round-trips back through Import. The grouping/summary/export logic lives in a
