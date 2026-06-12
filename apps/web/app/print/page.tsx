@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { LAUNCH_LANGS } from '@proxyforge/config';
 import { useCart } from '@/lib/cart';
 import { buildExport, summarizeBySupertype, printListTotals, type ExportFormat } from '@/lib/printlist';
-import { deckFileName } from '@/lib/filename';
+import { deckFileName, deckTextFileName } from '@/lib/filename';
 import { loadRenderOptions, serializeRenderOptions } from '@/lib/renderOptions';
 import { findDuplicateLines, summarizeDuplicates } from '@/lib/decklint';
 import { sortPrintList, PRINT_SORTS, type PrintSort } from '@/lib/printsort';
@@ -93,6 +93,20 @@ export default function PrintPage() {
     } catch {
       /* clipboard blocked (e.g. insecure context); the textarea is selectable */
     }
+  }
+
+  // Save the decklist text as a .txt file (named from the deck name), so it can
+  // be archived or shared without the clipboard.
+  function downloadDeckText() {
+    const blob = new Blob([exportText], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = deckTextFileName(deckName);
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
   }
 
   async function generate() {
@@ -311,9 +325,14 @@ export default function PrintPage() {
           rows={Math.min(12, Math.max(3, items.length))}
           style={{ width: '100%', fontFamily: 'monospace', boxSizing: 'border-box' }}
         />
-        <button className="ghost" onClick={copyDeck}>
-          {copied ? 'Copied ✓' : 'Copy to clipboard'}
-        </button>
+        <span style={{ display: 'inline-flex', gap: 8 }}>
+          <button className="ghost" onClick={copyDeck}>
+            {copied ? 'Copied ✓' : 'Copy to clipboard'}
+          </button>
+          <button className="ghost" onClick={downloadDeckText} disabled={!items.length}>
+            Download .txt
+          </button>
+        </span>
       </details>
 
       <div className="optrow">

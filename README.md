@@ -134,10 +134,11 @@ how many lines were combined (and the summed quantity), so a split playset is
 not mistaken for a missing one.
 
 **Decklist export.** "Export this list" on the print page emits a decklist
-(`<qty> <name>`) with a copy button, in one of two formats: Grouped into
-Pokémon / Trainer / Energy sections with counts (cards added by browsing or by
-Import carry their supertype), or Plain (`<qty> <name>` lines only, no headers)
-for tools that reject section headers. The print list header shows the total copies with a unique-card count when they
+(`<qty> <name>`) with copy-to-clipboard and download-as-`.txt` buttons (the file
+is named from the deck name, e.g. `my-lugia-deck.txt`), in one of two formats:
+Grouped into Pokémon / Trainer / Energy sections with counts (cards added by
+browsing or by Import carry their supertype), or Plain (`<qty> <name>` lines
+only, no headers) for tools that reject section headers. The print list header shows the total copies with a unique-card count when they
 differ (e.g. `40 cards (14 unique)`) and a one-line breakdown by supertype
 (e.g. `12 Pokémon · 34 Trainer · 14 Energy`) when the list spans more than one.
 Save a list or move it between devices (the localStorage cart is per-browser);
