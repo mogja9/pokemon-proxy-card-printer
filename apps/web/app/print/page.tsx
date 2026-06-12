@@ -6,6 +6,7 @@ import { useCart } from '@/lib/cart';
 import { buildDeckExport, summarizeBySupertype } from '@/lib/printlist';
 import { deckFileName } from '@/lib/filename';
 import { loadRenderOptions, serializeRenderOptions } from '@/lib/renderOptions';
+import { findDuplicateLines, summarizeDuplicates } from '@/lib/decklint';
 
 const RENDER_OPTS_KEY = 'pf.renderopts.v1';
 
@@ -36,6 +37,7 @@ export default function PrintPage() {
   const [importLang, setImportLang] = useState('en');
   const [importing, setImporting] = useState(false);
   const [importMsg, setImportMsg] = useState('');
+  const [dupNote, setDupNote] = useState('');
   const [unresolved, setUnresolved] = useState<Unresolved[]>([]);
   const [copied, setCopied] = useState(false);
 
@@ -126,8 +128,11 @@ export default function PrintPage() {
   async function importDeck() {
     setImporting(true);
     setImportMsg('');
+    setDupNote('');
     setUnresolved([]);
     setErr('');
+    // computed from the pasted text before it is cleared on success
+    const dupNoteText = summarizeDuplicates(findDuplicateLines(deckText));
     try {
       const res = await fetch('/api/deck/resolve', {
         method: 'POST',
@@ -152,7 +157,10 @@ export default function PrintPage() {
           data.resolved.length === 1 ? '' : 's'
         }.`,
       );
-      if (data.resolved.length) setDeckText('');
+      if (data.resolved.length) {
+        setDeckText('');
+        setDupNote(dupNoteText);
+      }
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
     } finally {
@@ -193,6 +201,7 @@ export default function PrintPage() {
           </button>
         </div>
         {importMsg && <p style={{ color: '#9ae89a' }}>{importMsg}</p>}
+        {dupNote && <p style={{ color: 'var(--muted)', fontSize: 13 }}>{dupNote}</p>}
         {unresolved.length > 0 && (
           <div style={{ color: '#e8c06a', fontSize: 13 }}>
             <p>

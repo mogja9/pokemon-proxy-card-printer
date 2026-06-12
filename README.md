@@ -127,7 +127,9 @@ Meilisearch with the Postgres fallback described above.
 lines can be name-only) on the print page and the whole list is resolved into
 the print list in one step - set code + number via `card_set.ptcg_code`, with a
 name fallback. Unmatched lines (e.g. PTCGL promo renumbering) are listed for
-manual fixup.
+manual fixup, and when a card is named on more than one line the import reports
+how many lines were combined (and the summed quantity), so a split playset is
+not mistaken for a missing one.
 
 **Decklist export.** "Export this list" on the print page emits a decklist
 (`<qty> <name>`) with a copy button, grouped into Pokémon / Trainer / Energy
