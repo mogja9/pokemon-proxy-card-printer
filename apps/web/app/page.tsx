@@ -4,6 +4,7 @@ import { listSets, listSupertypes, type BrowseSort } from '@/lib/db';
 import { searchCards } from '@/lib/search';
 import CardCard from '@/components/CardCard';
 import PageJump from '@/components/PageJump';
+import { emptyStateSuggestions } from '@/lib/emptystate';
 
 export const dynamic = 'force-dynamic';
 
@@ -118,7 +119,17 @@ export default async function Browse({ searchParams }: { searchParams: Promise<S
           <div className="grid">
             {res.cards.map((c) => <CardCard key={c.id} card={c} />)}
           </div>
-          {res.cards.length === 0 && <p>No cards match. Try another language or clear filters.</p>}
+          {res.cards.length === 0 && (
+            <div style={{ color: 'var(--muted)' }}>
+              <p style={{ marginBottom: 4 }}>No cards match.</p>
+              <ul style={{ margin: '0 0 8px', paddingLeft: 18 }}>
+                {emptyStateSuggestions({ q, set, supertype, promoOnly, lang }).map((t, i) => (
+                  <li key={i}>{t}</li>
+                ))}
+              </ul>
+              {hasFilters && <Link className="ghost" href={clearHref}>Clear all filters</Link>}
+            </div>
+          )}
           <div className="pager">
             {page > 1 && <Link className="ghost" href={qs({ page: String(page - 1) })}>Prev</Link>}
             <span style={{ color: 'var(--muted)' }}>Page {page} / {totalPages}</span>
