@@ -109,7 +109,7 @@ npm run web:dev                        # http://localhost:3000
 # or: npm run web:build && npm -w @proxyforge/web run start
 ```
 
-Faceted browse (set / language / type / promo + name search, sortable by newest/oldest/set, with a 24/48/96 per-page control and a one-click Clear when any filter is active), card detail with a
+Faceted browse (set / language / type / promo + name search, sortable by newest/oldest/set, with a 24/48/96 per-page control, a one-click Clear when any filter is active, and a jump-to-page box on the pager), card detail with a
 language switcher, DPI / English-fallback badges, a quantity selector when
 adding to the list (add 4 copies in one click) and a "copy decklist line"
 button (`1 <name> <SETCODE> <number>`, pasteable into a decklist and
