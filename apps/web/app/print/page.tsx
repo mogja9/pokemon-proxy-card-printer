@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { LAUNCH_LANGS } from '@proxyforge/config';
 import { useCart } from '@/lib/cart';
-import { buildDeckExport, summarizeBySupertype } from '@/lib/printlist';
+import { buildExport, summarizeBySupertype, type ExportFormat } from '@/lib/printlist';
 import { deckFileName } from '@/lib/filename';
 import { loadRenderOptions, serializeRenderOptions } from '@/lib/renderOptions';
 import { findDuplicateLines, summarizeDuplicates } from '@/lib/decklint';
@@ -43,6 +43,7 @@ export default function PrintPage() {
   const [unresolved, setUnresolved] = useState<Unresolved[]>([]);
   const [copied, setCopied] = useState(false);
   const [printSort, setPrintSort] = useState<PrintSort>('added');
+  const [exportFormat, setExportFormat] = useState<ExportFormat>('grouped');
 
   // Restore the render options from a previous visit, then persist on change.
   // hydrated gates the save effect so the initial defaults never clobber the
@@ -77,7 +78,7 @@ export default function PrintPage() {
   // MPC accepts at most MPC_MAX_ORDER cards per order; warn before generating.
   const mpcOverCapacity = target === 'mpc' && total > MPC_MAX_ORDER;
   // a name-based decklist of the current list (re-importable; round-trips with Import)
-  const exportText = buildDeckExport(items);
+  const exportText = buildExport(items, exportFormat);
   // one-line breakdown by supertype, shown when the list spans more than one
   const summary = summarizeBySupertype(items);
   const multiType = summary.includes('·');
@@ -294,6 +295,13 @@ export default function PrintPage() {
           A name-based decklist you can save, share, or re-import on another device (it
           round-trips with Import above).
         </p>
+        <label style={{ display: 'inline-flex', gap: 6, alignItems: 'center', marginBottom: 8 }}>
+          Format
+          <select value={exportFormat} onChange={(e) => setExportFormat(e.target.value as ExportFormat)}>
+            <option value="grouped">Grouped (Pokémon / Trainer / Energy)</option>
+            <option value="plain">Plain (qty + name only)</option>
+          </select>
+        </label>
         <textarea
           readOnly
           value={exportText}

@@ -5,6 +5,8 @@ import {
   groupBySupertype,
   summarizeBySupertype,
   buildDeckExport,
+  buildPlainExport,
+  buildExport,
 } from '../lib/printlist';
 
 const items = [
@@ -63,4 +65,17 @@ test('buildDeckExport falls back to a flat list when no supertypes are present',
     { qty: 1, name: 'Card B' },
   ];
   assert.equal(buildDeckExport(flat), '2 Card A\n1 Card B');
+});
+
+test('buildPlainExport is flat with no headers even when supertypes exist', () => {
+  assert.equal(
+    buildPlainExport(items),
+    '3 Iono\n4 Pikachu\n8 Lightning Energy\n2 Charizard ex',
+  );
+  assert.equal(buildPlainExport([]), '');
+});
+
+test('buildExport dispatches on format', () => {
+  assert.equal(buildExport(items, 'grouped'), buildDeckExport(items));
+  assert.equal(buildExport(items, 'plain'), buildPlainExport(items));
 });
