@@ -25,3 +25,8 @@ export function deckFileName(name: string, target: 'pdf' | 'mpc'): string {
   const base = slugifyDeckName(name);
   return target === 'mpc' ? `${base}-mpc.zip` : `${base}.pdf`;
 }
+
+/** Filename for the exported decklist text: `<base>.txt`. */
+export function deckTextFileName(name: string): string {
+  return `${slugifyDeckName(name)}.txt`;
+}

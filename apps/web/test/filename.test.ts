@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { slugifyDeckName, deckFileName } from '../lib/filename';
+import { slugifyDeckName, deckFileName, deckTextFileName } from '../lib/filename';
 
 test('slugifies a deck name to lowercase dash-separated', () => {
   assert.equal(slugifyDeckName('My Lugia Deck'), 'my-lugia-deck');
@@ -33,4 +33,10 @@ test('deckFileName appends the right extension per target', () => {
   assert.equal(deckFileName('My Deck', 'mpc'), 'my-deck-mpc.zip');
   assert.equal(deckFileName('', 'pdf'), 'proxies.pdf');
   assert.equal(deckFileName('', 'mpc'), 'proxies-mpc.zip');
+});
+
+test('deckTextFileName slugifies and appends .txt', () => {
+  assert.equal(deckTextFileName('My Lugia Deck'), 'my-lugia-deck.txt');
+  assert.equal(deckTextFileName(''), 'proxies.txt');
+  assert.equal(deckTextFileName('Café!!'), 'cafe.txt');
 });
