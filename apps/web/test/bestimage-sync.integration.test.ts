@@ -77,16 +77,18 @@ interface MvRow {
   image_remote_url: string | null;
   image_lang: string;
   image_is_english_fallback: boolean;
+  display_name: string;
 }
 
-test('card_display MV image-pick matches lib/db getCardBySlug for every row', async () => {
+test('card_display MV image + name pick matches lib/db getCardBySlug for every row', async () => {
   const db = await freshDb();
   await db.exec(FIXTURE);
   await db.exec('REFRESH MATERIALIZED VIEW card_display');
   __setTestQueryRunner(db);
   try {
     const mv = await db.query<MvRow>(
-      `SELECT slug, requested_lang, image_key, image_remote_url, image_lang, image_is_english_fallback
+      `SELECT slug, requested_lang, image_key, image_remote_url, image_lang,
+              image_is_english_fallback, display_name
        FROM card_display ORDER BY slug, requested_lang`,
     );
     // sanity: the fixtures must produce a meaningful spread of cases
@@ -106,6 +108,11 @@ test('card_display MV image-pick matches lib/db getCardBySlug for every row', as
         row.image_is_english_fallback,
         `en-fallback flag mismatch @ ${ctx}`,
       );
+      // NAME parity: for every card that carries EN (the universal case in this
+      // dataset), the MV's requested->EN name fallback must equal the detail
+      // page's COALESCE(cl.name, len.name). See OPEN_ITEMS for the MV-only 3rd
+      // "any localization" tier that getCardBySlug does not implement.
+      assert.equal(detail!.card.name, row.display_name, `display name mismatch @ ${ctx}`);
     }
 
     // spot-check the load-bearing tiebreaks resolved as intended
@@ -115,6 +122,9 @@ test('card_display MV image-pick matches lib/db getCardBySlug for every row', as
     assert.equal(pick('sv01-001', 'ja').image_key, 'c1en'); // EN fallback
     assert.equal(pick('sv01-003', 'en').image_key, 'c3stored'); // stored over remote at equal rank
     assert.equal(pick('sv01-004', 'en').image_key, 'kc4a'); // bleed excluded; id tiebreak
+    // name fallback: requested-lang name when present, else EN
+    assert.equal(pick('sv01-001', 'fr').display_name, 'Afr'); // native fr name
+    assert.equal(pick('sv01-001', 'ja').display_name, 'A'); // no ja loc -> EN fallback
   } finally {
     __setTestQueryRunner(null);
     await db.close();
