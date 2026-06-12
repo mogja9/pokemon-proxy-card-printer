@@ -105,19 +105,27 @@ export async function searchCards(p: SearchParams): Promise<SearchResult> {
     params.push(val);
     where.push(sql.replace('$$', `$${params.length}`));
   };
-  if (p.q) add('cl.name ILIKE $$', `%${p.q}%`);
+  // Filter on the DISPLAYED name (requested lang, else EN) so a search in a
+  // non-EN language still finds EN-only cards by their EN name.
+  if (p.q) add('COALESCE(cl.name, len.name) ILIKE $$', `%${p.q}%`);
   if (p.set) add('cs.set_id = $$', p.set);
   if (p.supertype) add('cp.supertype = $$', p.supertype);
   if (p.promoOnly) where.push('cp.is_promo');
 
   const whereSql = where.join(' AND ');
   const best = BEST_IMAGE.replaceAll('$LANG', '$1');
+  // requested-lang localization with an EN fallback, LEFT-joined so a card that
+  // has no localization in the requested language still appears (with its EN
+  // name) - mirrors card_display + getCardBySlug, instead of the old INNER JOIN
+  // on the requested lang that hid EN-only cards in non-EN browse.
+  const LOC_JOIN = `
+     LEFT JOIN card_localization cl  ON cl.card_print_id = cp.id AND cl.lang = $1
+     LEFT JOIN card_localization len ON len.card_print_id = cp.id AND len.lang = 'en'`;
 
   const countRes = await query<{ n: string }>(
     `SELECT count(*)::int AS n
      FROM card_print cp
-     JOIN card_set cs ON cs.id = cp.card_set_id
-     JOIN card_localization cl ON cl.card_print_id = cp.id AND cl.lang = $1
+     JOIN card_set cs ON cs.id = cp.card_set_id${LOC_JOIN}
      WHERE ${whereSql}`,
     params,
   );
@@ -126,11 +134,10 @@ export async function searchCards(p: SearchParams): Promise<SearchResult> {
   params.push(pageSize, (page - 1) * pageSize);
   const res = await query<Record<string, unknown>>(
     `SELECT cp.id, cp.slug, cs.set_id, cp.collector_number_raw, cp.supertype, cp.rarity,
-            cp.is_promo, cl.name,
+            cp.is_promo, COALESCE(cl.name, len.name) AS name,
             img.storage_key, img.remote_url, img.dpi_at_trim, img.lang AS img_lang
      FROM card_print cp
-     JOIN card_set cs ON cs.id = cp.card_set_id
-     JOIN card_localization cl ON cl.card_print_id = cp.id AND cl.lang = $1
+     JOIN card_set cs ON cs.id = cp.card_set_id${LOC_JOIN}
      ${best}
      WHERE ${whereSql}
      ORDER BY ${SORT_ORDER_BY[p.sort ?? 'newest']}
