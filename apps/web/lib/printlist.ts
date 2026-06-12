@@ -73,6 +73,16 @@ export function buildPlainExport(items: PrintListItem[]): string {
   return items.map((i) => `${i.qty} ${i.name}`).join('\n');
 }
 
+export interface PrintTotals {
+  copies: number; // total cards printed (sum of quantities)
+  unique: number; // distinct rows (each slug+lang is one row)
+}
+
+/** Total printed copies and the number of distinct entries. */
+export function printListTotals(items: { qty: number }[]): PrintTotals {
+  return { copies: items.reduce((n, x) => n + x.qty, 0), unique: items.length };
+}
+
 export type ExportFormat = 'grouped' | 'plain';
 
 /** Render the export in the chosen format. */

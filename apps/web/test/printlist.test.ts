@@ -7,6 +7,7 @@ import {
   buildDeckExport,
   buildPlainExport,
   buildExport,
+  printListTotals,
 } from '../lib/printlist';
 
 const items = [
@@ -78,4 +79,10 @@ test('buildPlainExport is flat with no headers even when supertypes exist', () =
 test('buildExport dispatches on format', () => {
   assert.equal(buildExport(items, 'grouped'), buildDeckExport(items));
   assert.equal(buildExport(items, 'plain'), buildPlainExport(items));
+});
+
+test('printListTotals sums copies and counts distinct rows', () => {
+  assert.deepEqual(printListTotals(items), { copies: 17, unique: 4 });
+  assert.deepEqual(printListTotals([]), { copies: 0, unique: 0 });
+  assert.deepEqual(printListTotals([{ qty: 1, name: 'X' }]), { copies: 1, unique: 1 });
 });
