@@ -14,7 +14,7 @@ import { pg_trgm } from '@electric-sql/pglite/contrib/pg_trgm';
 import { citext } from '@electric-sql/pglite/contrib/citext';
 import { pgcrypto } from '@electric-sql/pglite/contrib/pgcrypto';
 import { __setTestQueryRunner } from '@proxyforge/db';
-import { DECK_BY_SETCODE_BATCH_SQL, resolveDeckList } from '../src/deck.js';
+import { DECK_BY_SETCODE_BATCH_SQL, DECK_BY_NAME_BATCH_SQL, resolveDeckList } from '../src/deck.js';
 
 const SCHEMA_PATH = resolve(dirname(fileURLToPath(import.meta.url)), '../../../db/schema.sql');
 
@@ -84,6 +84,78 @@ test('resolveDeckList(): real function - parse + batch + assemble, order/qty kep
     assert.equal(res.unresolved.length, 1);
     assert.equal(res.unresolved[0]!.name, 'Ghost');
     assert.match(res.unresolved[0]!.reason, /OBF 999/);
+  } finally {
+    __setTestQueryRunner(null);
+    await db.close();
+  }
+});
+
+// A suppressed print (legal takedown / bad data) must never resolve - by set
+// code+number OR by name - so it can't be added to a print list.
+const SUPPRESSED_FIXTURE = `
+INSERT INTO series (id,tcgdex_id,name_en) VALUES ('00000000-0000-0000-0000-000000000001','sv','S&V');
+INSERT INTO card_set (id,set_id,series_id,name_en,ptcg_code,release_date)
+  VALUES ('00000000-0000-0000-0000-0000000000a1','sv01','00000000-0000-0000-0000-000000000001','S&V','SVI','2023-03-31');
+INSERT INTO card_print (id,card_set_id,collector_number_raw,supertype,is_suppressed) VALUES
+ ('00000000-0000-0000-0000-0000000000d1','00000000-0000-0000-0000-0000000000a1','050','Pokemon',true);
+INSERT INTO card_localization (card_print_id,lang,name) VALUES
+ ('00000000-0000-0000-0000-0000000000d1','en','Banned Mon');
+`;
+
+test('suppressed prints never resolve, by set code or by name', async () => {
+  const db = await freshDb();
+  await db.exec(SUPPRESSED_FIXTURE);
+  // raw SQL: set code + number hits the suppressed row -> NULL
+  const r = await db.query<{ idx: number; slug: string | null }>(DECK_BY_SETCODE_BATCH_SQL, [
+    ['SVI'],
+    ['50'],
+  ]);
+  assert.equal(r.rows[0]!.slug, null);
+  // raw SQL: name match hits the suppressed row -> NULL
+  const n = await db.query<{ idx: number; slug: string | null }>(DECK_BY_NAME_BATCH_SQL, [
+    ['Banned Mon'],
+    'en',
+  ]);
+  assert.equal(n.rows[0]!.slug, null);
+
+  __setTestQueryRunner(db);
+  try {
+    const res = await resolveDeckList('2 Banned Mon SVI 50\n1 Banned Mon', 'en');
+    assert.equal(res.resolved.length, 0);
+    assert.equal(res.unresolved.length, 2);
+  } finally {
+    __setTestQueryRunner(null);
+    await db.close();
+  }
+});
+
+// Two prints share a name: the name fallback must prefer a localization in the
+// REQUESTED language over EN, and only then fall back to the newest set.
+const NAME_PREF_FIXTURE = `
+INSERT INTO series (id,tcgdex_id,name_en) VALUES ('00000000-0000-0000-0000-000000000001','sv','S&V');
+INSERT INTO card_set (id,set_id,series_id,name_en,ptcg_code,release_date) VALUES
+ ('00000000-0000-0000-0000-0000000000a1','sv01','00000000-0000-0000-0000-000000000001','S&V old','SVI','2023-03-31'),
+ ('00000000-0000-0000-0000-0000000000a2','sv02','00000000-0000-0000-0000-000000000001','S&V new','PAL','2024-01-01');
+-- cA in the OLDER set has a FR localization; cB in the NEWER set is EN-only
+INSERT INTO card_print (id,card_set_id,collector_number_raw,supertype) VALUES
+ ('00000000-0000-0000-0000-0000000000b1','00000000-0000-0000-0000-0000000000a1','001','Pokemon'),
+ ('00000000-0000-0000-0000-0000000000b2','00000000-0000-0000-0000-0000000000a2','002','Pokemon');
+INSERT INTO card_localization (card_print_id,lang,name) VALUES
+ ('00000000-0000-0000-0000-0000000000b1','en','Pikachu'),('00000000-0000-0000-0000-0000000000b1','fr','Pikachu'),
+ ('00000000-0000-0000-0000-0000000000b2','en','Pikachu');
+`;
+
+test('name fallback prefers requested-lang localization, else newest set', async () => {
+  const db = await freshDb();
+  await db.exec(NAME_PREF_FIXTURE);
+  __setTestQueryRunner(db);
+  try {
+    // fr: the FR-localized print (older set sv01) outranks the EN-only newer one
+    const fr = await resolveDeckList('1 Pikachu', 'fr');
+    assert.equal(fr.resolved[0]!.slug, 'sv01-001');
+    // en: no lang preference -> newest set (sv02) wins the release_date tiebreak
+    const en = await resolveDeckList('1 Pikachu', 'en');
+    assert.equal(en.resolved[0]!.slug, 'sv02-002');
   } finally {
     __setTestQueryRunner(null);
     await db.close();
