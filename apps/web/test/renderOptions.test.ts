@@ -15,8 +15,14 @@ test('parseRenderOptions returns defaults for non-object input', () => {
 
 test('parseRenderOptions keeps valid fields and falls back per-field', () => {
   assert.deepEqual(
-    parseRenderOptions({ target: 'mpc', paper: 'letter', dpi: '600', bleed: true, gutter: '8', deckName: 'My Deck' }),
-    { target: 'mpc', paper: 'letter', dpi: '600', bleed: true, gutter: '8', deckName: 'My Deck' },
+    parseRenderOptions({
+      target: 'mpc', paper: 'letter', dpi: '600', bleed: true, gutter: '8', deckName: 'My Deck',
+      printSort: 'qty', exportFormat: 'plain',
+    }),
+    {
+      target: 'mpc', paper: 'letter', dpi: '600', bleed: true, gutter: '8', deckName: 'My Deck',
+      printSort: 'qty', exportFormat: 'plain',
+    },
   );
   // invalid enum values fall back, valid ones survive
   const r = parseRenderOptions({ target: 'xyz', paper: 'A4', dpi: 999, bleed: 'yes' });
@@ -24,6 +30,14 @@ test('parseRenderOptions keeps valid fields and falls back per-field', () => {
   assert.equal(r.paper, 'A4');
   assert.equal(r.dpi, '300');
   assert.equal(r.bleed, false);
+});
+
+test('validates the print-list display sort and export format', () => {
+  assert.equal(parseRenderOptions({ printSort: 'name' }).printSort, 'name');
+  assert.equal(parseRenderOptions({ printSort: 'bogus' }).printSort, 'added');
+  assert.equal(parseRenderOptions({ printSort: 42 }).printSort, 'added');
+  assert.equal(parseRenderOptions({ exportFormat: 'plain' }).exportFormat, 'plain');
+  assert.equal(parseRenderOptions({ exportFormat: 'xml' }).exportFormat, 'grouped');
 });
 
 test('clamps gutter to 0..20 integer millimetres', () => {
@@ -44,6 +58,9 @@ test('loadRenderOptions tolerates null and malformed JSON', () => {
 });
 
 test('serialize then load round-trips a valid options object', () => {
-  const o = { target: 'mpc', paper: 'letter', dpi: '600', bleed: true, gutter: '12', deckName: 'Lugia' } as const;
+  const o = {
+    target: 'mpc', paper: 'letter', dpi: '600', bleed: true, gutter: '12', deckName: 'Lugia',
+    printSort: 'qty', exportFormat: 'plain',
+  } as const;
   assert.deepEqual(loadRenderOptions(serializeRenderOptions(o)), o);
 });

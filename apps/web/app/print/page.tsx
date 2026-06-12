@@ -57,6 +57,8 @@ export default function PrintPage() {
     setBleed(o.bleed);
     setGutter(o.gutter);
     setDeckName(o.deckName);
+    setPrintSort(o.printSort);
+    setExportFormat(o.exportFormat);
     hydrated.current = true;
   }, []);
   useEffect(() => {
@@ -64,12 +66,12 @@ export default function PrintPage() {
     try {
       window.localStorage.setItem(
         RENDER_OPTS_KEY,
-        serializeRenderOptions({ target: target as 'pdf' | 'mpc', paper: paper as 'A4' | 'letter', dpi: dpi as '300' | '600', bleed, gutter, deckName }),
+        serializeRenderOptions({ target: target as 'pdf' | 'mpc', paper: paper as 'A4' | 'letter', dpi: dpi as '300' | '600', bleed, gutter, deckName, printSort, exportFormat }),
       );
     } catch {
       /* storage full/unavailable: a non-persisted option is not worth crashing */
     }
-  }, [target, paper, dpi, bleed, gutter, deckName]);
+  }, [target, paper, dpi, bleed, gutter, deckName, printSort, exportFormat]);
 
   const total = items.reduce((n, x) => n + x.qty, 0);
   const sheets = Math.ceil(total / 9); // 3x3 N-up
