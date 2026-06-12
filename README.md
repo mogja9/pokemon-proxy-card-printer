@@ -113,7 +113,8 @@ Faceted browse (set / language / type / promo + name search, sortable by newest/
 language switcher, DPI / English-fallback badges, a quantity selector when
 adding to the list (add 4 copies in one click) and a "copy decklist line"
 button (`1 <name> <SETCODE> <number>`, pasteable into a decklist and
-round-trippable through Import), a localStorage print list,
+round-trippable through Import), a localStorage print list (with a display sort
+by added order / name / quantity),
 and a one-click render to home PDF or MakePlayingCards ZIP (with paper, DPI,
 gutter, and bleed options, plus an optional deck name that slugifies into the
 download filename, e.g. `my-lugia-deck.pdf`). The render options (target,

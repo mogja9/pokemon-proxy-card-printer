@@ -7,6 +7,7 @@ import { buildDeckExport, summarizeBySupertype } from '@/lib/printlist';
 import { deckFileName } from '@/lib/filename';
 import { loadRenderOptions, serializeRenderOptions } from '@/lib/renderOptions';
 import { findDuplicateLines, summarizeDuplicates } from '@/lib/decklint';
+import { sortPrintList, PRINT_SORTS, type PrintSort } from '@/lib/printsort';
 
 const RENDER_OPTS_KEY = 'pf.renderopts.v1';
 
@@ -40,6 +41,7 @@ export default function PrintPage() {
   const [dupNote, setDupNote] = useState('');
   const [unresolved, setUnresolved] = useState<Unresolved[]>([]);
   const [copied, setCopied] = useState(false);
+  const [printSort, setPrintSort] = useState<PrintSort>('added');
 
   // Restore the render options from a previous visit, then persist on change.
   // hydrated gates the save effect so the initial defaults never clobber the
@@ -230,12 +232,20 @@ export default function PrintPage() {
         {sheets === 1 ? '' : 's'} (3x3)
         {multiType && <> · {summary}</>}
       </p>
+      {items.length > 1 && (
+        <label style={{ display: 'inline-flex', gap: 6, alignItems: 'center', marginBottom: 8 }}>
+          Sort
+          <select value={printSort} onChange={(e) => setPrintSort(e.target.value as PrintSort)}>
+            {PRINT_SORTS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
+          </select>
+        </label>
+      )}
       <table className="cart">
         <thead>
           <tr><th>Card</th><th>Lang</th><th>Qty</th><th></th></tr>
         </thead>
         <tbody>
-          {items.map((it) => (
+          {sortPrintList(items, printSort).map((it) => (
             <tr key={`${it.slug}-${it.lang}`}>
               <td>
                 <Link href={`/card/${it.slug}?lang=${it.lang}`}>{it.name}</Link>{' '}
