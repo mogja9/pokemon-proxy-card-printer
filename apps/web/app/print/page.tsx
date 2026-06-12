@@ -8,6 +8,7 @@ import { deckFileName } from '@/lib/filename';
 import { loadRenderOptions, serializeRenderOptions } from '@/lib/renderOptions';
 import { findDuplicateLines, summarizeDuplicates } from '@/lib/decklint';
 import { sortPrintList, PRINT_SORTS, type PrintSort } from '@/lib/printsort';
+import { clampQty, stepQty, QTY_MAX } from '@/lib/qty';
 
 const RENDER_OPTS_KEY = 'pf.renderopts.v1';
 
@@ -253,14 +254,33 @@ export default function PrintPage() {
               </td>
               <td>{it.lang}</td>
               <td>
-                <input
-                  type="number"
-                  min={1}
-                  max={999}
-                  value={it.qty}
-                  style={{ width: 64 }}
-                  onChange={(e) => setQty(it.slug, it.lang, Math.max(0, Number(e.target.value) || 0))}
-                />
+                <span style={{ display: 'inline-flex', gap: 4, alignItems: 'center' }}>
+                  <button
+                    type="button"
+                    className="ghost"
+                    aria-label={`decrease quantity of ${it.name}`}
+                    onClick={() => setQty(it.slug, it.lang, stepQty(it.qty, -1))}
+                  >
+                    −
+                  </button>
+                  <input
+                    type="number"
+                    min={0}
+                    max={QTY_MAX}
+                    value={it.qty}
+                    style={{ width: 64 }}
+                    aria-label={`quantity of ${it.name}`}
+                    onChange={(e) => setQty(it.slug, it.lang, clampQty(Number(e.target.value)))}
+                  />
+                  <button
+                    type="button"
+                    className="ghost"
+                    aria-label={`increase quantity of ${it.name}`}
+                    onClick={() => setQty(it.slug, it.lang, stepQty(it.qty, 1))}
+                  >
+                    +
+                  </button>
+                </span>
               </td>
               <td><button className="ghost" onClick={() => remove(it.slug, it.lang)}>remove</button></td>
             </tr>
