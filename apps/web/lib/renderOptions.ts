@@ -6,6 +6,9 @@
  * lives in the component.
  */
 
+import type { PrintSort } from './printsort';
+import type { ExportFormat } from './printlist';
+
 export interface RenderOptions {
   target: 'pdf' | 'mpc';
   paper: 'A4' | 'letter';
@@ -13,6 +16,8 @@ export interface RenderOptions {
   bleed: boolean;
   gutter: string; // millimetres, '0'..'20'
   deckName: string;
+  printSort: PrintSort; // print-list display order
+  exportFormat: ExportFormat; // decklist export shape
 }
 
 export const DEFAULT_RENDER_OPTIONS: RenderOptions = {
@@ -22,11 +27,15 @@ export const DEFAULT_RENDER_OPTIONS: RenderOptions = {
   bleed: false,
   gutter: '4',
   deckName: '',
+  printSort: 'added',
+  exportFormat: 'grouped',
 };
 
 const TARGETS = ['pdf', 'mpc'] as const;
 const PAPERS = ['A4', 'letter'] as const;
 const DPIS = ['300', '600'] as const;
+const PRINT_SORTS = ['added', 'name', 'qty'] as const;
+const EXPORT_FORMATS = ['grouped', 'plain'] as const;
 
 function pick<T extends string>(allowed: readonly T[], v: unknown, fallback: T): T {
   return typeof v === 'string' && (allowed as readonly string[]).includes(v) ? (v as T) : fallback;
@@ -48,6 +57,8 @@ export function parseRenderOptions(raw: unknown): RenderOptions {
     bleed: typeof o.bleed === 'boolean' ? o.bleed : DEFAULT_RENDER_OPTIONS.bleed,
     gutter: clampGutter(o.gutter),
     deckName: typeof o.deckName === 'string' ? o.deckName.slice(0, 80) : DEFAULT_RENDER_OPTIONS.deckName,
+    printSort: pick(PRINT_SORTS, o.printSort, DEFAULT_RENDER_OPTIONS.printSort),
+    exportFormat: pick(EXPORT_FORMATS, o.exportFormat, DEFAULT_RENDER_OPTIONS.exportFormat),
   };
 }
 
