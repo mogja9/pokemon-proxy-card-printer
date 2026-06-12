@@ -3,6 +3,7 @@ import { LAUNCH_LANGS, type Lang } from '@proxyforge/config';
 import { listSets, listSupertypes, type BrowseSort } from '@/lib/db';
 import { searchCards } from '@/lib/search';
 import CardCard from '@/components/CardCard';
+import PageJump from '@/components/PageJump';
 
 export const dynamic = 'force-dynamic';
 
@@ -122,6 +123,7 @@ export default async function Browse({ searchParams }: { searchParams: Promise<S
             {page > 1 && <Link className="ghost" href={qs({ page: String(page - 1) })}>Prev</Link>}
             <span style={{ color: 'var(--muted)' }}>Page {page} / {totalPages}</span>
             {page < totalPages && <Link className="ghost" href={qs({ page: String(page + 1) })}>Next</Link>}
+            {totalPages > 1 && <PageJump current={page} totalPages={totalPages} />}
           </div>
         </>
       )}
