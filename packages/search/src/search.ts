@@ -46,10 +46,21 @@ export function filterValue(v: string): string {
   return `"${v.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
 }
 
+/**
+ * Clamp to an integer in [min,max], falling back to def for any non-finite
+ * input (undefined, NaN, +/-Infinity) or a fractional value. Keeps a malformed
+ * page/pageSize from reaching Meili as NaN or a non-integer hitsPerPage.
+ */
+function clampInt(v: number | undefined, min: number, max: number, def: number): number {
+  const n = Math.floor(v as number);
+  if (!Number.isFinite(n)) return def;
+  return Math.min(max, Math.max(min, n));
+}
+
 /** Pure: turn a SearchQuery into a Meili /search request body. */
 export function buildSearchRequest(p: SearchQuery): MeiliRequest {
-  const pageSize = Math.min(MAX_PAGE_SIZE, Math.max(1, p.pageSize ?? DEFAULT_PAGE_SIZE));
-  const page = Math.max(1, p.page ?? 1);
+  const pageSize = clampInt(p.pageSize, 1, MAX_PAGE_SIZE, DEFAULT_PAGE_SIZE);
+  const page = clampInt(p.page, 1, Number.MAX_SAFE_INTEGER, 1);
   const q = (p.q ?? '').trim();
 
   // The index IS the language now (cards_<lang>), so no lang filter is needed.

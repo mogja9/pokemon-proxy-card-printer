@@ -87,10 +87,18 @@ export interface SearchResult {
   pageSize: number;
 }
 
+// Clamp to an integer in [min,max], defaulting on non-finite/fractional input
+// (NaN, Infinity, undefined) so a bad page/pageSize never reaches the SQL.
+function clampInt(v: number | undefined, min: number, max: number, def: number): number {
+  const n = Math.floor(v as number);
+  if (!Number.isFinite(n)) return def;
+  return Math.min(max, Math.max(min, n));
+}
+
 export async function searchCards(p: SearchParams): Promise<SearchResult> {
   const lang = p.lang;
-  const pageSize = Math.min(120, Math.max(1, p.pageSize ?? 48));
-  const page = Math.max(1, p.page ?? 1);
+  const pageSize = clampInt(p.pageSize, 1, 120, 48);
+  const page = clampInt(p.page, 1, Number.MAX_SAFE_INTEGER, 1);
   const where: string[] = ['NOT cp.is_digital_only', 'NOT cp.is_suppressed'];
   const params: unknown[] = [lang];
   const add = (sql: string, val: unknown) => {
