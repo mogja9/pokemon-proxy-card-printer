@@ -48,6 +48,9 @@ export interface FetchOptions {
   retries?: number;
   browserUa?: boolean;
   headers?: Record<string, string>;
+  /** Injectable fetch + backoff sleep so retry/terminal logic is unit-testable. */
+  fetchImpl?: typeof fetch;
+  sleepImpl?: (ms: number) => Promise<void>;
 }
 
 export class HttpError extends Error {
@@ -66,6 +69,8 @@ export class HttpError extends Error {
  */
 export async function fetchJson<T>(url: string, opts: FetchOptions = {}): Promise<T | null> {
   const { limiter, timeoutMs = 20000, retries = 4, browserUa = false, headers = {} } = opts;
+  const doFetch = opts.fetchImpl ?? fetch;
+  const backoff = opts.sleepImpl ?? sleep;
   let attempt = 0;
   let lastErr: unknown;
 
@@ -74,7 +79,7 @@ export async function fetchJson<T>(url: string, opts: FetchOptions = {}): Promis
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), timeoutMs);
     try {
-      const res = await fetch(url, {
+      const res = await doFetch(url, {
         signal: ctrl.signal,
         headers: {
           accept: 'application/json',
@@ -94,7 +99,7 @@ export async function fetchJson<T>(url: string, opts: FetchOptions = {}): Promis
       if (err instanceof HttpError && err.status < 500 && err.status !== 429) throw err;
       attempt += 1;
       if (attempt > retries) break;
-      await sleep(Math.min(15000, 500 * 2 ** (attempt - 1)));
+      await backoff(Math.min(15000, 500 * 2 ** (attempt - 1)));
     } finally {
       clearTimeout(timer);
     }
