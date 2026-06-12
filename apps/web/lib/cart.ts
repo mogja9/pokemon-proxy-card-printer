@@ -35,7 +35,10 @@ function write(items: CartItem[]): void {
   window.dispatchEvent(new Event(EVT));
 }
 
-function mergeInto(cur: CartItem[], it: Omit<CartItem, 'qty'>, qty: number): void {
+// Exported for unit testing: the load-bearing dedup the decklist import relies
+// on (same slug+lang merges and sums qty; a different lang is a separate row).
+// Pure - mutates the passed array, no IO.
+export function mergeInto(cur: CartItem[], it: Omit<CartItem, 'qty'>, qty: number): void {
   const i = cur.findIndex((x) => x.slug === it.slug && x.lang === it.lang);
   if (i >= 0) cur[i]!.qty += qty;
   else cur.push({ ...it, qty });
