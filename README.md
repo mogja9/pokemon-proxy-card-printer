@@ -126,12 +126,14 @@ Meilisearch with the Postgres fallback described above.
 
 **Decklist import.** Paste a Pokémon TCG Live / Limitless decklist
 (`<qty> <name> [<setCode> <number>]`, e.g. `4 Pikachu SVI 94`; Trainer/Energy
-lines can be name-only) on the print page and the whole list is resolved into
-the print list in one step - set code + number via `card_set.ptcg_code`, with a
-name fallback. Unmatched lines (e.g. PTCGL promo renumbering) are listed for
-manual fixup, and when a card is named on more than one line the import reports
-how many lines were combined (and the summed quantity), so a split playset is
-not mistaken for a missing one.
+lines can be name-only) on the print page and the whole list is resolved -
+set code + number via `card_set.ptcg_code`, with a name fallback. Import is a
+two-step preview/confirm: "Preview import" shows how many cards from how many
+lines will be added and which lines will not match (e.g. PTCGL promo
+renumbering) before anything touches the print list, so you can review or cancel
+first. When a card is named on more than one line the preview reports how many
+lines were combined (and the summed quantity), so a split playset is not
+mistaken for a missing one.
 
 **Decklist export.** "Export this list" on the print page emits a decklist
 (`<qty> <name>`) with copy-to-clipboard and download-as-`.txt` buttons (the file

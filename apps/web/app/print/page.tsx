@@ -7,6 +7,7 @@ import { buildExport, summarizeBySupertype, printListTotals, type ExportFormat }
 import { deckFileName, deckTextFileName } from '@/lib/filename';
 import { loadRenderOptions, serializeRenderOptions } from '@/lib/renderOptions';
 import { findDuplicateLines, summarizeDuplicates } from '@/lib/decklint';
+import { importPreviewSummary, importAddedSummary } from '@/lib/importsummary';
 import { sortPrintList, PRINT_SORTS, type PrintSort } from '@/lib/printsort';
 import { clampQty, stepQty, QTY_MAX } from '@/lib/qty';
 
@@ -22,6 +23,20 @@ interface Unresolved {
   qty: number;
   name: string;
   reason: string;
+}
+
+interface ResolvedItem {
+  qty: number;
+  name: string;
+  slug: string;
+  lang: string;
+  supertype: string | null;
+}
+
+interface ImportPreview {
+  resolved: ResolvedItem[];
+  unresolved: Unresolved[];
+  dupNote: string;
 }
 
 export default function PrintPage() {
@@ -41,6 +56,7 @@ export default function PrintPage() {
   const [importMsg, setImportMsg] = useState('');
   const [dupNote, setDupNote] = useState('');
   const [unresolved, setUnresolved] = useState<Unresolved[]>([]);
+  const [preview, setPreview] = useState<ImportPreview | null>(null);
   const [copied, setCopied] = useState(false);
   const [printSort, setPrintSort] = useState<PrintSort>('added');
   const [exportFormat, setExportFormat] = useState<ExportFormat>('grouped');
@@ -145,13 +161,14 @@ export default function PrintPage() {
     }
   }
 
-  async function importDeck() {
+  // Step 1: resolve the pasted list and show a preview (nothing is added yet).
+  async function previewDeck() {
     setImporting(true);
     setImportMsg('');
     setDupNote('');
     setUnresolved([]);
+    setPreview(null);
     setErr('');
-    // computed from the pasted text before it is cleared on success
     const dupNoteText = summarizeDuplicates(findDuplicateLines(deckText));
     try {
       const res = await fetch('/api/deck/resolve', {
@@ -160,32 +177,34 @@ export default function PrintPage() {
         body: JSON.stringify({ text: deckText, lang: importLang }),
       });
       if (!res.ok) throw new Error((await res.text()) || `import failed (${res.status})`);
-      const data = (await res.json()) as {
-        resolved: { qty: number; name: string; slug: string; lang: string; supertype: string | null }[];
-        unresolved: Unresolved[];
-      };
-      addMany(
-        data.resolved.map((r) => ({
-          item: { slug: r.slug, lang: r.lang, name: r.name, imageUrl: null, supertype: r.supertype },
-          qty: r.qty,
-        })),
-      );
-      setUnresolved(data.unresolved);
-      const added = data.resolved.reduce((n, r) => n + r.qty, 0);
-      setImportMsg(
-        `Added ${added} card${added === 1 ? '' : 's'} from ${data.resolved.length} line${
-          data.resolved.length === 1 ? '' : 's'
-        }.`,
-      );
-      if (data.resolved.length) {
-        setDeckText('');
-        setDupNote(dupNoteText);
-      }
+      const data = (await res.json()) as { resolved: ResolvedItem[]; unresolved: Unresolved[] };
+      setPreview({ resolved: data.resolved, unresolved: data.unresolved, dupNote: dupNoteText });
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
     } finally {
       setImporting(false);
     }
+  }
+
+  // Step 2: commit the previewed resolved cards to the print list.
+  function confirmImport() {
+    if (!preview) return;
+    addMany(
+      preview.resolved.map((r) => ({
+        item: { slug: r.slug, lang: r.lang, name: r.name, imageUrl: null, supertype: r.supertype },
+        qty: r.qty,
+      })),
+    );
+    const added = preview.resolved.reduce((n, r) => n + r.qty, 0);
+    setImportMsg(importAddedSummary(added, preview.resolved.length));
+    setUnresolved(preview.unresolved);
+    setDupNote(preview.dupNote);
+    setDeckText('');
+    setPreview(null);
+  }
+
+  function cancelPreview() {
+    setPreview(null); // keep deckText so the user can edit and re-preview
   }
 
   return (
@@ -216,10 +235,52 @@ export default function PrintPage() {
               ))}
             </select>
           </label>
-          <button className="primary" disabled={importing || !deckText.trim()} onClick={importDeck}>
-            {importing ? 'Importing...' : 'Import to print list'}
+          <button
+            className="primary"
+            disabled={importing || !deckText.trim() || preview !== null}
+            onClick={previewDeck}
+          >
+            {importing ? 'Resolving...' : 'Preview import'}
           </button>
         </div>
+        {preview && (
+          <div
+            style={{ border: '1px solid var(--border, #333)', borderRadius: 6, padding: 10, marginTop: 8 }}
+          >
+            <p style={{ margin: '0 0 8px' }}>
+              {importPreviewSummary(
+                preview.resolved.reduce((n, r) => n + r.qty, 0),
+                preview.resolved.length,
+                preview.unresolved.length,
+              )}
+            </p>
+            {preview.dupNote && (
+              <p style={{ color: 'var(--muted)', fontSize: 13, margin: '0 0 8px' }}>{preview.dupNote}</p>
+            )}
+            {preview.unresolved.length > 0 && (
+              <div style={{ color: '#e8c06a', fontSize: 13, marginBottom: 8 }}>
+                <p style={{ margin: '0 0 4px' }}>Will not match (add manually from Browse):</p>
+                <ul style={{ margin: 0, maxHeight: 140, overflow: 'auto' }}>
+                  {preview.unresolved.map((u, i) => (
+                    <li key={i}>
+                      {u.qty} x {u.name} - {u.reason}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                className="primary"
+                disabled={!preview.resolved.length}
+                onClick={confirmImport}
+              >
+                Add {preview.resolved.reduce((n, r) => n + r.qty, 0)} to print list
+              </button>
+              <button className="ghost" onClick={cancelPreview}>Cancel</button>
+            </div>
+          </div>
+        )}
         {importMsg && <p style={{ color: '#9ae89a' }}>{importMsg}</p>}
         {dupNote && <p style={{ color: 'var(--muted)', fontSize: 13 }}>{dupNote}</p>}
         {unresolved.length > 0 && (
