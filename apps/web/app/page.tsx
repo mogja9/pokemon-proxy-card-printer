@@ -5,6 +5,7 @@ import { searchCards } from '@/lib/search';
 import CardCard from '@/components/CardCard';
 import PageJump from '@/components/PageJump';
 import { emptyStateSuggestions } from '@/lib/emptystate';
+import { pageRange, formatPageRange } from '@/lib/pagerange';
 
 export const dynamic = 'force-dynamic';
 
@@ -115,7 +116,7 @@ export default async function Browse({ searchParams }: { searchParams: Promise<S
 
       {res && (
         <>
-          <p style={{ color: 'var(--muted)' }}>{res.total.toLocaleString()} cards</p>
+          <p style={{ color: 'var(--muted)' }}>{formatPageRange(pageRange(page, res.pageSize, res.total))}</p>
           <div className="grid">
             {res.cards.map((c) => <CardCard key={c.id} card={c} />)}
           </div>
